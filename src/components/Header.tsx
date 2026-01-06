@@ -1,58 +1,47 @@
 import { Link } from "react-router-dom";
 import { Building2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Header = () => {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass border-b border-border/50">
-      <div className="container mx-auto flex h-16 items-center justify-between px-4">
-        <Link to="/" className="flex items-center gap-2 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 backdrop-blur-xl border-b border-black/5 transition-all duration-300">
+      <div className="container mx-auto flex h-20 items-center justify-between px-6">
+        {/* Logo - Cleaner */}
+        <Link to="/" className="group flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-sm group-hover:shadow-primary/50 transition-all duration-300">
             <Building2 className="h-5 w-5" />
           </div>
-          <div className="flex flex-col">
-            <span className="font-display text-lg font-bold text-foreground leading-tight">
-              Flex Hostel
-            </span>
-            <span className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">
-              Okitipupa
-            </span>
-          </div>
+          <span className="text-xl font-bold tracking-tight text-foreground font-display">
+            Flex Hostel
+          </span>
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6">
-          <Link 
-            to="/okitipupa" 
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Our Building
-          </Link>
-          <Link 
-            to="/okitipupa/rooms" 
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Rooms
-          </Link>
-          <Link 
-            to="/about" 
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-          >
-            About
-          </Link>
+        {/* Desktop Nav - Centered & Pill shape if we wanted, but simple text is cleaner for Airbnb style */}
+        <nav className="hidden md:flex items-center gap-1">
+          {["Our Building", "Rooms", "Amenities", "Contact"].map((item) => (
+            <Link
+              key={item}
+              to={item === "Rooms" ? "/okitipupa/rooms" : "/okitipupa"}
+              className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-full transition-all"
+            >
+              {item}
+            </Link>
+          ))}
         </nav>
 
-        <div className="flex items-center gap-3">
-          <Link 
+        {/* Actions */}
+        <div className="flex items-center gap-4">
+          <Link
             to="/auth"
-            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+            className="text-sm font-semibold text-foreground hover:text-primary transition-colors px-4"
           >
             Sign In
           </Link>
-          <Link 
-            to="/okitipupa/rooms"
-            className="hidden sm:inline-flex h-9 items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
-          >
-            Explore Rooms
-          </Link>
+          <Button asChild className="hidden sm:inline-flex rounded-full px-6 shadow-sm hover:shadow-md">
+            <Link to="/okitipupa/rooms">
+              Book Now
+            </Link>
+          </Button>
         </div>
       </div>
     </header>

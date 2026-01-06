@@ -9,11 +9,17 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      <main>
+      <main className="relative">
         <HeroSection />
-        <BuildingHighlights />
-        <RoomsSection />
-        <ComingSoonSection />
+        <div className="animate-fade-in">
+          <BuildingHighlights />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '0.2s' }}>
+          <RoomsSection />
+        </div>
+        <div className="animate-fade-in" style={{ animationDelay: '0.4s' }}>
+          <ComingSoonSection />
+        </div>
       </main>
       <Footer />
     </div>

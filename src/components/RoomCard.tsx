@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Snowflake, Bath, Lamp, Eye } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface RoomCardProps {
   id: string;
@@ -15,20 +14,13 @@ interface RoomCardProps {
   gender: "male" | "female" | "any";
 }
 
-const statusLabels = {
-  available: "Available",
-  pending: "Pending",
-  occupied: "Occupied",
-};
-
-const amenityIcons: Record<string, React.ReactNode> = {
-  "Air Conditioning": <Snowflake className="h-3 w-3" />,
-  "Private Bathroom": <Bath className="h-3 w-3" />,
-  "Reading Lamp": <Lamp className="h-3 w-3" />,
+const statusConfig = {
+  available: { label: "Available", className: "bg-green-500/90 text-white border-none" },
+  pending: { label: "Pending", className: "bg-yellow-500/90 text-black border-none" },
+  occupied: { label: "Occupied", className: "bg-red-500/90 text-white border-none" },
 };
 
 const RoomCard = ({
-  id,
   roomName,
   buildingName,
   buildingSlug,
@@ -36,6 +28,7 @@ const RoomCard = ({
   coverImage,
   amenities,
   status,
+  gender,
 }: RoomCardProps) => {
   const formattedPrice = new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -43,80 +36,69 @@ const RoomCard = ({
     maximumFractionDigits: 0,
   }).format(price);
 
-  const shortPrice = `₦${(price / 1000).toFixed(0)}k/yr`;
-
   return (
-    <div className="group bg-card rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 card-hover border border-border/50">
-      {/* Image Container */}
-      <div className="relative aspect-[16/10] overflow-hidden">
+    <Link
+      to={`/${buildingSlug}/rooms/${roomName.toLowerCase().replace(" ", "-")}`}
+      className="group block relative space-y-3 touch-scale"
+    >
+      {/* Image Container with Apple-style fluid rounded corners */}
+      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[1.25rem] bg-secondary border border-black/5 shadow-sm transition-all duration-300 group-hover:shadow-md">
         <img
           src={coverImage || "/placeholder.svg"}
           alt={`Room ${roomName}`}
-          className="w-full h-full object-cover img-zoom"
+          className="h-full w-full object-cover transition-transform duration-700 ease-out will-change-transform group-hover:scale-105"
         />
-        
-        {/* Building Badge */}
-        <Badge 
-          variant="building" 
-          className="absolute top-3 left-3 text-[10px]"
-        >
-          {buildingName}
-        </Badge>
 
-        {/* Price Badge */}
-        <Badge 
-          variant="price" 
-          className="absolute top-3 right-3"
-        >
-          {shortPrice}
-        </Badge>
+        {/* Glassmorphic Overlay Gradient for text readability if needed, kept subtle */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
-        {/* Gradient Overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-foreground/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      </div>
-
-      {/* Content */}
-      <div className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="font-display text-lg font-bold text-foreground">
-            {roomName}
-          </h3>
-          <Badge variant={status}>
-            {statusLabels[status]}
+        {/* Floating Badges */}
+        <div className="absolute top-3 left-3 flex gap-2 flex-wrap max-w-[70%]">
+          <Badge variant="secondary" className="glass border-white/20 text-black/80 font-medium backdrop-blur-md shadow-sm">
+            {buildingName}
           </Badge>
+          {gender !== 'any' && (
+            <Badge variant="outline" className="glass border-white/20 text-black/80 font-medium backdrop-blur-md shadow-sm capitalize">
+              {gender}
+            </Badge>
+          )}
         </div>
 
-        <p className="text-sm text-muted-foreground">
-          {formattedPrice}/year
-        </p>
+        <div className="absolute top-3 right-3">
+          <Badge className={cn("glass backdrop-blur-md shadow-sm px-2.5 py-0.5", statusConfig[status].className)}>
+            {statusConfig[status].label}
+          </Badge>
+        </div>
+      </div>
 
-        {/* Amenities Preview */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {amenities.slice(0, 3).map((amenity) => (
-            <span 
-              key={amenity}
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted rounded-full px-2 py-1"
-            >
-              {amenityIcons[amenity] || null}
+      {/* Clean Minimal Info */}
+      <div className="space-y-1 pl-1">
+        <div className="flex justify-between items-baseline">
+          <h3 className="font-semibold text-lg tracking-tight text-foreground/90 group-hover:text-primary transition-colors">
+            {roomName}
+          </h3>
+          <div className="flex items-baseline gap-1">
+            <span className="font-bold text-lg text-foreground tracking-tight">{formattedPrice}</span>
+            <span className="text-muted-foreground text-sm font-medium">/yr</span>
+          </div>
+        </div>
+
+        {/* Subtitle / Amenities Summary */}
+        <div className="flex flex-wrap gap-x-2 text-sm text-muted-foreground font-medium leading-relaxed">
+          {amenities.slice(0, 3).map((amenity, i) => (
+            <span key={amenity} className="flex items-center">
+              {i > 0 && <span className="mr-2 text-muted-foreground/40">•</span>}
               {amenity}
             </span>
           ))}
           {amenities.length > 3 && (
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground/60">
               +{amenities.length - 3} more
             </span>
           )}
         </div>
-
-        {/* CTA */}
-        <Button asChild className="w-full" size="sm">
-          <Link to={`/${buildingSlug}/rooms/${roomName.toLowerCase().replace(" ", "-")}`}>
-            <Eye className="h-4 w-4" />
-            View Details
-          </Link>
-        </Button>
       </div>
-    </div>
+    </Link>
   );
 };
 

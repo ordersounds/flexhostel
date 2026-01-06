@@ -147,54 +147,61 @@ const RoomsSection = () => {
     : rooms;
 
   return (
-    <section className="py-16 bg-background">
-      <div className="container mx-auto px-4">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-8">
-          <div>
-            <h2 className="font-display text-2xl md:text-3xl font-bold text-foreground mb-2">
-              Choose Your Room
-            </h2>
-            <p className="text-muted-foreground">
-              Browse our selection of premium self-contained rooms
-            </p>
-          </div>
+    <section className="py-24 bg-gradient-to-b from-background to-primary/5 relative overflow-hidden">
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 opacity-3">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-success rounded-full blur-2xl" />
+      </div>
 
-          {/* Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <div className="flex bg-muted rounded-lg p-1">
-              <button
-                onClick={() => setFilter("all")}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  filter === "all" 
-                    ? "bg-background text-foreground shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                All Rooms
-              </button>
-              <button
-                onClick={() => setFilter("available")}
-                className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
-                  filter === "available" 
-                    ? "bg-background text-foreground shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Available
-              </button>
-            </div>
+      <div className="container mx-auto px-6 relative">
+        {/* Enhanced Header */}
+        <div className="text-center mb-16">
+          <div className="inline-flex items-center gap-2 bg-primary/10 rounded-full px-4 py-2 mb-6">
+            <span className="text-sm font-semibold text-primary">🏠 Premium Rooms</span>
+          </div>
+          <h2 className="font-display text-3xl md:text-4xl font-black text-foreground mb-4">
+            Choose Your Perfect Room
+          </h2>
+          <p className="text-muted-foreground max-w-2xl mx-auto text-lg leading-relaxed">
+            Browse our selection of premium self-contained rooms, each designed for student comfort and convenience
+          </p>
+        </div>
+
+        {/* Clean Filter */}
+        <div className="flex items-center justify-center gap-4 mb-12">
+          <Filter className="h-5 w-5 text-primary" />
+          <div className="flex bg-white rounded-lg p-1 shadow-sm border border-border">
+            <button
+              onClick={() => setFilter("all")}
+              className={`px-6 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                filter === "all"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent-subtle"
+              }`}
+            >
+              All Rooms ({rooms.length})
+            </button>
+            <button
+              onClick={() => setFilter("available")}
+              className={`px-6 py-2 text-sm font-medium rounded-md transition-all duration-200 ${
+                filter === "available"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-accent-subtle"
+              }`}
+            >
+              Available ({rooms.filter(r => r.status === "available").length})
+            </button>
           </div>
         </div>
 
-        {/* Room Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Enhanced Room Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
           {filteredRooms.map((room, index) => (
-            <div 
-              key={room.id} 
-              className="animate-fade-in"
-              style={{ animationDelay: `${index * 100}ms` }}
+            <div
+              key={room.id}
+              className="animate-slide-up"
+              style={{ animationDelay: `${index * 150}ms` }}
             >
               <RoomCard
                 id={room.id}
@@ -211,14 +218,22 @@ const RoomsSection = () => {
           ))}
         </div>
 
-        {/* View All CTA */}
-        <div className="text-center mt-10">
-          <Button asChild size="lg">
-            <Link to="/okitipupa/rooms">
-              View All 50 Rooms
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </Button>
+        {/* Enhanced CTA */}
+        <div className="text-center">
+          <div className="glass-card rounded-2xl p-8 max-w-lg mx-auto shadow-xl border border-primary/10">
+            <h3 className="font-display text-xl font-bold text-foreground mb-2">
+              Can't find your perfect room?
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              Browse all 50 rooms with advanced filters and virtual tours
+            </p>
+            <Button asChild size="lg" variant="primary">
+              <Link to="/okitipupa/rooms">
+                View All Rooms
+                <ArrowRight className="h-5 w-5" />
+              </Link>
+            </Button>
+          </div>
         </div>
       </div>
     </section>
