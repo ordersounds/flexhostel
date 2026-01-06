@@ -85,7 +85,7 @@ const BuildingDetail = () => {
               <div className="w-8 h-8 rounded-full border border-white/20 flex items-center justify-center group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all">
                 <ArrowLeft className="h-4 w-4" />
               </div>
-              Back to Collections
+              Back to Residence
             </Link>
 
             <div className="max-w-4xl">
