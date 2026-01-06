@@ -9,6 +9,8 @@ import RoomsList from "./pages/RoomsList";
 import RoomDetail from "./pages/RoomDetail";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import LandlordDashboard from "./pages/LandlordDashboard";
+import PaymentSuccess from "./pages/PaymentSuccess"; // Added import for PaymentSuccess
 import ApplicationForm from "./pages/ApplicationForm";
 import NotFound from "./pages/NotFound";
 
@@ -31,6 +33,8 @@ const App = () => (
           <Route path="/apply/:roomName" element={<ApplicationForm />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/landlord" element={<LandlordDashboard />} />
+          <Route path="/dashboard/success" element={<PaymentSuccess />} /> {/* Added new route */}
           {/* Catch-all for any building slug */}
           <Route path="/:buildingSlug" element={<BuildingDetail />} />
           <Route path="/:buildingSlug/rooms" element={<RoomsList />} />
