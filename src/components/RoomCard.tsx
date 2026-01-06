@@ -15,9 +15,9 @@ interface RoomCardProps {
 }
 
 const statusConfig = {
-  available: { label: "Available", className: "bg-green-500/90 text-white border-none" },
-  pending: { label: "Pending", className: "bg-yellow-500/90 text-black border-none" },
-  occupied: { label: "Occupied", className: "bg-red-500/90 text-white border-none" },
+  available: { label: "Available", className: "bg-primary text-primary-foreground" },
+  pending: { label: "Reserved", className: "bg-stone-200 text-stone-600" },
+  occupied: { label: "Full", className: "bg-stone-100 text-stone-400" },
 };
 
 const RoomCard = ({
@@ -39,63 +39,73 @@ const RoomCard = ({
   return (
     <Link
       to={`/${buildingSlug}/rooms/${roomName.toLowerCase().replace(" ", "-")}`}
-      className="group block relative space-y-3 touch-scale"
+      className="group block relative space-y-4"
     >
-      {/* Image Container with Apple-style fluid rounded corners */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[1.25rem] bg-secondary border border-black/5 shadow-sm transition-all duration-300 group-hover:shadow-md">
+      {/* Image Container with Apple-style deep rounded corners */}
+      <div className="relative aspect-[4/5] md:aspect-[4/3] w-full overflow-hidden rounded-[2.5rem] bg-stone-100 border border-black/5 shadow-sm transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:shadow-2xl group-hover:-translate-y-2">
         <img
           src={coverImage || "/placeholder.svg"}
           alt={`Room ${roomName}`}
-          className="h-full w-full object-cover transition-transform duration-700 ease-out will-change-transform group-hover:scale-105"
+          className="h-full w-full object-cover transition-transform duration-1000 ease-out will-change-transform group-hover:scale-110"
         />
 
-        {/* Glassmorphic Overlay Gradient for text readability if needed, kept subtle */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        {/* Dynamic Glass Overlay */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
 
         {/* Floating Badges */}
-        <div className="absolute top-3 left-3 flex gap-2 flex-wrap max-w-[70%]">
-          <Badge variant="secondary" className="glass border-white/20 text-black/80 font-medium backdrop-blur-md shadow-sm">
+        <div className="absolute top-5 left-5 flex gap-2 flex-wrap max-w-[80%]">
+          <Badge variant="secondary" className="bg-white/90 backdrop-blur-md text-stone-900 border-none px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-sm">
             {buildingName}
           </Badge>
           {gender !== 'any' && (
-            <Badge variant="outline" className="glass border-white/20 text-black/80 font-medium backdrop-blur-md shadow-sm capitalize">
+            <Badge variant="outline" className="bg-black/20 backdrop-blur-md text-white border-white/20 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider capitalize">
               {gender}
             </Badge>
           )}
         </div>
 
-        <div className="absolute top-3 right-3">
-          <Badge className={cn("glass backdrop-blur-md shadow-sm px-2.5 py-0.5", statusConfig[status].className)}>
+        <div className="absolute top-5 right-5">
+          <Badge className={cn("backdrop-blur-md shadow-lg border-none px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all duration-300", statusConfig[status].className)}>
             {statusConfig[status].label}
           </Badge>
+        </div>
+
+        {/* Price Tag (Mobile Visible, Desktop Hover) */}
+        <div className="absolute bottom-6 left-6 z-20">
+          <div className="bg-white px-4 py-2 rounded-2xl shadow-2xl opacity-100 md:opacity-0 md:translate-y-4 md:group-hover:opacity-100 md:group-hover:translate-y-0 transition-all duration-500 delay-100">
+            <span className="text-xs font-bold text-stone-400 uppercase tracking-widest block leading-none mb-1">Annual Rent</span>
+            <span className="text-xl font-black text-stone-900 tracking-tighter">{formattedPrice}</span>
+          </div>
         </div>
       </div>
 
       {/* Clean Minimal Info */}
-      <div className="space-y-1 pl-1">
-        <div className="flex justify-between items-baseline">
-          <h3 className="font-semibold text-lg tracking-tight text-foreground/90 group-hover:text-primary transition-colors">
-            {roomName}
-          </h3>
-          <div className="flex items-baseline gap-1">
-            <span className="font-bold text-lg text-foreground tracking-tight">{formattedPrice}</span>
-            <span className="text-muted-foreground text-sm font-medium">/yr</span>
+      <div className="space-y-2 px-2">
+        <div className="flex justify-between items-end">
+          <div>
+            <h3 className="font-display text-2xl font-bold tracking-tighter text-stone-900 group-hover:text-primary transition-colors duration-300">
+              {roomName}
+            </h3>
+            {/* Subtitle / Amenities Summary */}
+            <div className="flex flex-wrap gap-x-2 text-xs text-stone-500 font-medium leading-relaxed mt-1">
+              {amenities.slice(0, 2).map((amenity, i) => (
+                <span key={amenity} className="flex items-center">
+                  {i > 0 && <span className="mr-2 text-stone-300">•</span>}
+                  {amenity}
+                </span>
+              ))}
+              {amenities.length > 2 && (
+                <span className="text-stone-300">
+                  +{amenities.length - 2} more
+                </span>
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Subtitle / Amenities Summary */}
-        <div className="flex flex-wrap gap-x-2 text-sm text-muted-foreground font-medium leading-relaxed">
-          {amenities.slice(0, 3).map((amenity, i) => (
-            <span key={amenity} className="flex items-center">
-              {i > 0 && <span className="mr-2 text-muted-foreground/40">•</span>}
-              {amenity}
-            </span>
-          ))}
-          {amenities.length > 3 && (
-            <span className="text-muted-foreground/60">
-              +{amenities.length - 3} more
-            </span>
-          )}
+          <div className="hidden md:flex flex-col items-end">
+            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest leading-none">Price / Year</span>
+            <span className="text-xl font-black text-stone-900 tracking-tighter mt-1">{formattedPrice}</span>
+          </div>
         </div>
       </div>
     </Link>

@@ -5,17 +5,18 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { 
-  ArrowLeft, 
-  Snowflake, 
-  Bath, 
-  Lamp, 
-  Wifi, 
+import {
+  ArrowLeft,
+  Snowflake,
+  Bath,
+  Lamp,
+  Wifi,
   DoorOpen,
   User,
   Phone,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowRight
 } from "lucide-react";
 import roomInterior from "@/assets/room-interior.jpg";
 
@@ -33,7 +34,7 @@ const RoomDetail = () => {
   const { roomName } = useParams();
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  
+
   // Sample room data
   const room = {
     id: "1",
@@ -65,167 +66,201 @@ const RoomDetail = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-stone-50">
       <Header />
-      <main className="pt-16">
-        {/* Image Gallery */}
-        <section className="relative h-[50vh] min-h-[400px] bg-muted">
-          <img
-            src={room.images[currentImageIndex]}
-            alt={`Room ${room.room_name}`}
-            className="w-full h-full object-cover"
-          />
-          
-          {/* Navigation Arrows */}
-          {room.images.length > 1 && (
-            <>
-              <button
-                onClick={prevImage}
-                className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={nextImage}
-                className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full bg-background/80 backdrop-blur-sm flex items-center justify-center hover:bg-background transition-colors"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </>
-          )}
+      <main className="pt-20">
+        <div className="container mx-auto px-6 py-8">
 
-          {/* Dots Indicator */}
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-            {room.images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentImageIndex(index)}
-                className={`h-2 w-2 rounded-full transition-colors ${
-                  index === currentImageIndex ? "bg-background" : "bg-background/50"
-                }`}
-              />
-            ))}
+          {/* Back Button & Breadcrumb */}
+          <div className="mb-8 animate-reveal-up">
+            <Link
+              to="/okitipupa/rooms"
+              className="inline-flex items-center gap-2 text-stone-500 hover:text-primary transition-colors group font-bold uppercase tracking-widest text-[10px]"
+            >
+              <div className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all">
+                <ArrowLeft className="h-4 w-4" />
+              </div>
+              Back to Collections
+            </Link>
           </div>
 
-          {/* Back Button */}
-          <Link 
-            to="/okitipupa/rooms"
-            className="absolute top-20 left-4 inline-flex items-center gap-2 bg-background/80 backdrop-blur-sm rounded-lg px-3 py-2 text-sm font-medium hover:bg-background transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Rooms
-          </Link>
-        </section>
+          <div className="grid lg:grid-cols-12 gap-12">
 
-        {/* Content */}
-        <section className="py-8">
-          <div className="container mx-auto px-4">
-            <div className="grid lg:grid-cols-3 gap-8">
-              {/* Main Content */}
-              <div className="lg:col-span-2 space-y-8">
-                {/* Header */}
-                <div>
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div>
-                      <p className="text-sm text-muted-foreground mb-1">
-                        Flex Hostel — Okitipupa Building
-                      </p>
-                      <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground">
-                        Room {room.room_name}
-                      </h1>
-                    </div>
-                    <Badge variant={room.status} className="text-sm">
-                      {room.status === "available" ? "Available" : room.status === "pending" ? "Pending" : "Occupied"}
-                    </Badge>
-                  </div>
-                  <p className="text-muted-foreground leading-relaxed">
-                    {room.description}
-                  </p>
+            {/* Left: Cinematic Gallery & Info */}
+            <div className="lg:col-span-8 space-y-12">
+
+              {/* Cinematic Gallery */}
+              <section className="relative aspect-[16/10] md:aspect-[21/9] overflow-hidden rounded-[2.5rem] bg-stone-200 shadow-2xl animate-reveal-up group">
+                <img
+                  src={room.images[currentImageIndex]}
+                  alt={`Room ${room.room_name}`}
+                  className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105"
+                />
+
+                {/* Navigation Arrows - Glassmorphic */}
+                {room.images.length > 1 && (
+                  <>
+                    <button
+                      onClick={prevImage}
+                      className="absolute left-6 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/40 transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <ChevronLeft className="h-6 w-6" />
+                    </button>
+                    <button
+                      onClick={nextImage}
+                      className="absolute right-6 top-1/2 -translate-y-1/2 h-12 w-12 rounded-full bg-white/20 backdrop-blur-md border border-white/20 flex items-center justify-center text-white hover:bg-white/40 transition-all opacity-0 group-hover:opacity-100"
+                    >
+                      <ChevronRight className="h-6 w-6" />
+                    </button>
+                  </>
+                )}
+
+                {/* Progress Indicators */}
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-3 z-20">
+                  {room.images.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`h-1.5 rounded-full transition-all duration-500 ${index === currentImageIndex ? "w-8 bg-white" : "w-1.5 bg-white/40"
+                        }`}
+                    />
+                  ))}
                 </div>
 
-                {/* Amenities */}
-                <div>
-                  <h2 className="font-display text-xl font-semibold text-foreground mb-4">
-                    Room Amenities
-                  </h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                    {room.amenities.map((amenity) => (
-                      <div 
-                        key={amenity}
-                        className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg"
-                      >
-                        <div className="text-primary">
-                          {amenityIcons[amenity] || <DoorOpen className="h-5 w-5" />}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/40 pointer-events-none" />
+              </section>
+
+              {/* Room Meta & Description */}
+              <section className="space-y-8 animate-reveal-up delay-100">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-stone-200">
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <Badge className="bg-primary/10 text-primary border-none px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest">
+                        Luxury Suite
+                      </Badge>
+                      <span className="text-stone-300">•</span>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">Okitipupa, Ondo</span>
+                    </div>
+                    <h1 className="font-display text-5xl md:text-7xl font-bold text-stone-900 tracking-tighter leading-none mb-4">
+                      {room.room_name}
+                    </h1>
+                    <p className="text-xl text-stone-500 font-light max-w-2xl leading-relaxed">
+                      {room.description}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Amenities Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400 flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      Premium Features
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {room.amenities.map((amenity) => (
+                        <div
+                          key={amenity}
+                          className="flex items-center gap-4 p-4 bg-white rounded-2xl shadow-sm border border-stone-100 transition-all hover:shadow-md hover:border-primary/10 group"
+                        >
+                          <div className="w-10 h-10 rounded-xl bg-stone-50 flex items-center justify-center text-stone-400 group-hover:text-primary transition-colors">
+                            {amenityIcons[amenity] || <DoorOpen className="h-5 w-5" />}
+                          </div>
+                          <span className="text-sm font-bold text-stone-600">{amenity}</span>
                         </div>
-                        <span className="text-sm font-medium text-foreground">{amenity}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Agent Card */}
+                  <div className="space-y-6">
+                    <h2 className="text-xs font-bold uppercase tracking-[0.2em] text-stone-400 flex items-center gap-3">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                      Personal Liaison
+                    </h2>
+                    <div className="bg-stone-900 rounded-[2rem] p-8 text-white relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full pointer-events-none" />
+                      <div className="relative z-10 flex items-center gap-6">
+                        <div className="h-16 w-16 rounded-2xl bg-white/10 flex items-center justify-center border border-white/10 overflow-hidden">
+                          <User className="h-8 w-8 text-stone-400" />
+                        </div>
+                        <div>
+                          <p className="text-lg font-bold tracking-tight">{room.agent.name}</p>
+                          <p className="text-stone-400 text-sm mb-4">Dedicated Residence Agent</p>
+                          <a href={`tel:${room.agent.phone}`} className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest hover:text-teal-400 transition-colors">
+                            <Phone className="h-4 w-4" />
+                            Direct Contact
+                          </a>
+                        </div>
                       </div>
-                    ))}
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            {/* Right: Booking Sidebar (Sticky) */}
+            <div className="lg:col-span-4 lg:sticky lg:top-32 h-fit space-y-6 animate-reveal-up delay-200">
+              <div className="bg-white rounded-[2.5rem] p-10 shadow-2xl border border-stone-100 relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-[80px] rounded-full pointer-events-none" />
+
+                <div className="mb-10 text-center">
+                  <span className="text-xs font-bold text-stone-400 uppercase tracking-[0.2em] block mb-2">Investment / Year</span>
+                  <div className="flex items-baseline justify-center gap-2">
+                    <span className="text-5xl font-black text-stone-900 tracking-tighter">{formattedPrice}</span>
+                    <span className="text-stone-400 font-medium">/yr</span>
                   </div>
                 </div>
 
-                {/* Agent Info */}
-                <div className="bg-muted/50 rounded-xl p-6">
-                  <h2 className="font-display text-lg font-semibold text-foreground mb-4">
-                    Your Assigned Agent
-                  </h2>
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                      <User className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">{room.agent.name}</p>
-                      <p className="text-sm text-muted-foreground flex items-center gap-1">
-                        <Phone className="h-3 w-3" />
-                        {room.agent.phone}
-                      </p>
+                <div className="space-y-4 mb-10 pb-10 border-b border-stone-100">
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-stone-400 uppercase tracking-widest text-[10px]">Contract Term</span>
+                    <span className="font-bold text-stone-900">12 Months (Renews)</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-stone-400 uppercase tracking-widest text-[10px]">Eligibility</span>
+                    <span className="font-bold text-stone-900 capitalize">{room.gender === 'any' ? 'Gender Neutral' : room.gender}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="font-bold text-stone-400 uppercase tracking-widest text-[10px]">Status</span>
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full animate-pulse ${room.status === 'available' ? 'bg-primary' : 'bg-stone-300'}`} />
+                      <span className="font-bold text-stone-900">{room.status === 'available' ? 'Open for Application' : 'Reserved'}</span>
                     </div>
                   </div>
                 </div>
+
+                <Button
+                  size="lg"
+                  className="w-full h-16 rounded-full text-base font-bold shadow-xl hover:shadow-2xl hover:scale-105 transition-all bg-stone-950 text-white border-none group"
+                  disabled={room.status !== "available"}
+                  onClick={() => navigate(`/apply/${room.room_name.toLowerCase().replace(" ", "-")}`)}
+                >
+                  {room.status === "available" ? (
+                    <span className="flex items-center gap-2">
+                      Reserve This Suite
+                      <ArrowRight className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    </span>
+                  ) : "Full Occupancy"}
+                </Button>
+
+                <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest text-center mt-6">
+                  Full payment required for confirmation
+                </p>
               </div>
 
-              {/* Sidebar */}
-              <div className="lg:col-span-1">
-                <div className="sticky top-24 bg-card rounded-xl p-6 shadow-md border border-border/50">
-                  <div className="text-center mb-6">
-                    <p className="text-sm text-muted-foreground mb-1">Yearly Rent</p>
-                    <p className="font-display text-3xl font-bold text-foreground">
-                      {formattedPrice}
-                    </p>
-                    <p className="text-sm text-muted-foreground">/year</p>
-                  </div>
-
-                  <div className="space-y-4 mb-6 text-sm">
-                    <div className="flex justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Tenancy Duration</span>
-                      <span className="font-medium">12 months</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Gender</span>
-                      <span className="font-medium capitalize">{room.gender === "any" ? "Any" : room.gender}</span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b border-border">
-                      <span className="text-muted-foreground">Building</span>
-                      <span className="font-medium">Okitipupa</span>
-                    </div>
-                  </div>
-
-                  <Button 
-                    size="lg" 
-                    className="w-full" 
-                    disabled={room.status !== "available"}
-                    onClick={() => navigate(`/apply/${room.room_name.toLowerCase().replace(" ", "-")}`)}
-                  >
-                    {room.status === "available" ? "Apply Now" : "Not Available"}
-                  </Button>
-
-                  <p className="text-xs text-muted-foreground text-center mt-4">
-                    Full payment required before move-in
-                  </p>
-                </div>
+              {/* Need Help Card */}
+              <div className="bg-primary/5 rounded-[2rem] p-8 border border-primary/10">
+                <h4 className="text-stone-900 font-bold mb-2">Need a virtual tour?</h4>
+                <p className="text-stone-500 text-sm font-light mb-4 leading-relaxed">Schedule a high-definition video walkthrough with our residence agent today.</p>
+                <Button variant="ghost" className="p-0 h-auto text-primary font-bold text-xs uppercase tracking-widest hover:bg-transparent hover:text-teal-600 transition-colors">
+                  Request 3D Tour →
+                </Button>
               </div>
             </div>
+
           </div>
-        </section>
+        </div>
       </main>
       <Footer />
     </div>
