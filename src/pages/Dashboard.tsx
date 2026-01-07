@@ -41,6 +41,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "applications" | "payments" | "messages" | "announcements">(initialTab);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [charges, setCharges] = useState<any[]>([]);
+  const [landlordId, setLandlordId] = useState<string | null>(null);
 
   // Derived user stage for accurate Product Owner logic
   const userStage = tenancy
@@ -147,7 +148,7 @@ const Dashboard = () => {
           appResult.data?.find(a => a.status === "approved")?.rooms?.buildings?.id;
 
         if (activeBuildingId) {
-          const [annData, chargesData] = await Promise.all([
+          const [annData, chargesData, landlordData] = await Promise.all([
             supabase
               .from("announcements")
               .select("*")
@@ -157,12 +158,31 @@ const Dashboard = () => {
               .from("charges")
               .select("*")
               .eq("building_id", activeBuildingId)
-              .eq("status", "active")
+              .eq("status", "active"),
+            supabase
+              .from("profiles")
+              .select("id")
+              .eq("role", "landlord")
+              .limit(1)
+              .maybeSingle()
           ]);
 
           if (isMounted) {
             setAnnouncements(annData.data || []);
             setCharges(chargesData.data || []);
+            setLandlordId(landlordData.data?.id || null);
+          }
+        } else {
+          // Fetch landlord even without a building context
+          const { data: landlordData } = await supabase
+            .from("profiles")
+            .select("id")
+            .eq("role", "landlord")
+            .limit(1)
+            .maybeSingle();
+          
+          if (isMounted) {
+            setLandlordId(landlordData?.id || null);
           }
         }
       } catch (error) {
@@ -700,6 +720,7 @@ const Dashboard = () => {
                 userId={user?.id || ""}
                 buildingId={tenancy?.rooms?.buildings?.id || applications.find(a => a.status === 'approved')?.rooms?.buildings?.id}
                 agentId={tenancy?.rooms?.agent_id || applications.find(a => a.status === 'approved')?.rooms?.agent_id}
+                landlordId={landlordId}
               />
             )}
           </div>

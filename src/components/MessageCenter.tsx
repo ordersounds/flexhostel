@@ -1,21 +1,41 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Send, User, Building2, ShieldCheck, Image as ImageIcon, Sparkles, MessageSquare } from "lucide-react";
+import { Send, User, Building2, ShieldCheck, Image as ImageIcon, Sparkles, MessageSquare, Crown } from "lucide-react";
 import { toast } from "sonner";
 
 interface MessageCenterProps {
     userId: string;
     buildingId?: string | null;
     agentId?: string | null;
+    landlordId?: string | null;
 }
 
-const MessageCenter = ({ userId, buildingId, agentId }: MessageCenterProps) => {
+type ChannelType = "building" | "agent" | "landlord";
+
+const MessageCenter = ({ userId, buildingId, agentId, landlordId }: MessageCenterProps) => {
     const [messages, setMessages] = useState<any[]>([]);
     const [newMessage, setNewMessage] = useState("");
-    const [activeChannel, setActiveChannel] = useState<"building" | "agent">("building");
+    const [activeChannel, setActiveChannel] = useState<ChannelType>("building");
     const [loading, setLoading] = useState(true);
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Determine available channels
+    const channels: { id: ChannelType; label: string; icon: any; available: boolean }[] = [
+        { id: "building", label: "House Chat", icon: Building2, available: !!buildingId },
+        { id: "agent", label: "Agent", icon: User, available: !!agentId },
+        { id: "landlord", label: "Landlord", icon: Crown, available: !!landlordId && landlordId !== userId },
+    ];
+
+    const availableChannels = channels.filter(c => c.available);
+
+    // Set first available channel if current is not available
+    useEffect(() => {
+        const currentAvailable = channels.find(c => c.id === activeChannel)?.available;
+        if (!currentAvailable && availableChannels.length > 0) {
+            setActiveChannel(availableChannels[0].id);
+        }
+    }, [buildingId, agentId, landlordId]);
 
     useEffect(() => {
         const fetchMessages = async () => {
@@ -23,19 +43,21 @@ const MessageCenter = ({ userId, buildingId, agentId }: MessageCenterProps) => {
             let query = supabase
                 .from("messages")
                 .select(`
-          *,
-          sender:profiles!messages_sender_id_fkey (
-            name,
-            photo_url,
-            role
-          )
-        `)
+                    *,
+                    sender:profiles!messages_sender_id_fkey (
+                        name,
+                        photo_url,
+                        role
+                    )
+                `)
                 .order("created_at", { ascending: true });
 
             if (activeChannel === "building" && buildingId) {
                 query = query.eq("building_id", buildingId).is("receiver_id", null);
             } else if (activeChannel === "agent" && agentId) {
                 query = query.or(`and(sender_id.eq.${userId},receiver_id.eq.${agentId}),and(sender_id.eq.${agentId},receiver_id.eq.${userId})`);
+            } else if (activeChannel === "landlord" && landlordId) {
+                query = query.or(`and(sender_id.eq.${userId},receiver_id.eq.${landlordId}),and(sender_id.eq.${landlordId},receiver_id.eq.${userId})`);
             } else {
                 setMessages([]);
                 setLoading(false);
@@ -71,6 +93,10 @@ const MessageCenter = ({ userId, buildingId, agentId }: MessageCenterProps) => {
                         (activeChannel === "agent" && (
                             (payload.new.sender_id === userId && payload.new.receiver_id === agentId) ||
                             (payload.new.sender_id === agentId && payload.new.receiver_id === userId)
+                        )) ||
+                        (activeChannel === "landlord" && (
+                            (payload.new.sender_id === userId && payload.new.receiver_id === landlordId) ||
+                            (payload.new.sender_id === landlordId && payload.new.receiver_id === userId)
                         ));
 
                     if (isRelevant) {
@@ -91,7 +117,7 @@ const MessageCenter = ({ userId, buildingId, agentId }: MessageCenterProps) => {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [userId, buildingId, agentId, activeChannel]);
+    }, [userId, buildingId, agentId, landlordId, activeChannel]);
 
     const scrollToBottom = () => {
         setTimeout(() => {
@@ -105,11 +131,22 @@ const MessageCenter = ({ userId, buildingId, agentId }: MessageCenterProps) => {
         e.preventDefault();
         if (!newMessage.trim()) return;
 
+        let receiverId: string | null = null;
+        let buildingIdForMessage: string | null = null;
+
+        if (activeChannel === "building") {
+            buildingIdForMessage = buildingId || null;
+        } else if (activeChannel === "agent") {
+            receiverId = agentId || null;
+        } else if (activeChannel === "landlord") {
+            receiverId = landlordId || null;
+        }
+
         const messageData = {
             sender_id: userId,
             content: newMessage,
-            building_id: activeChannel === "building" ? buildingId : null,
-            receiver_id: activeChannel === "agent" ? agentId : null,
+            building_id: buildingIdForMessage,
+            receiver_id: receiverId,
         };
 
         const { error } = await supabase.from("messages").insert(messageData);
@@ -121,7 +158,7 @@ const MessageCenter = ({ userId, buildingId, agentId }: MessageCenterProps) => {
         }
     };
 
-    if (!buildingId && !agentId) {
+    if (availableChannels.length === 0) {
         return (
             <div className="bg-stone-900 rounded-[2.5rem] p-12 text-white relative overflow-hidden flex flex-col items-center text-center min-h-[500px] justify-center">
                 <div className="relative z-10">
@@ -141,23 +178,21 @@ const MessageCenter = ({ userId, buildingId, agentId }: MessageCenterProps) => {
         <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-xl overflow-hidden flex flex-col h-[700px]">
             {/* Header */}
             <div className="p-6 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
-                <div className="flex gap-4">
-                    <button
-                        onClick={() => setActiveChannel("building")}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeChannel === "building" ? "bg-stone-900 text-white shadow-lg" : "text-stone-400 hover:text-stone-600"
+                <div className="flex gap-2 flex-wrap">
+                    {availableChannels.map((channel) => (
+                        <button
+                            key={channel.id}
+                            onClick={() => setActiveChannel(channel.id)}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
+                                activeChannel === channel.id 
+                                    ? "bg-stone-900 text-white shadow-lg" 
+                                    : "text-stone-400 hover:text-stone-600"
                             }`}
-                    >
-                        <Building2 className="h-4 w-4" />
-                        House Chat
-                    </button>
-                    <button
-                        onClick={() => setActiveChannel("agent")}
-                        className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeChannel === "agent" ? "bg-stone-900 text-white shadow-lg" : "text-stone-400 hover:text-stone-600"
-                            }`}
-                    >
-                        <User className="h-4 w-4" />
-                        Direct Agent
-                    </button>
+                        >
+                            <channel.icon className="h-4 w-4" />
+                            {channel.label}
+                        </button>
+                    ))}
                 </div>
                 <div className="hidden md:flex items-center gap-2 text-[10px] font-bold text-stone-300 uppercase tracking-widest">
                     <Sparkles className="h-3 w-3" />
@@ -196,8 +231,14 @@ const MessageCenter = ({ userId, buildingId, agentId }: MessageCenterProps) => {
                                 )}
                             </div>
                             <div className={`max-w-[70%] space-y-2 ${msg.sender_id === userId ? "text-right" : ""}`}>
-                                <div className="flex items-center gap-2 px-1">
+                                <div className={`flex items-center gap-2 px-1 ${msg.sender_id === userId ? "justify-end" : ""}`}>
                                     <span className="text-[10px] font-bold text-stone-900 uppercase tracking-widest">{msg.sender?.name}</span>
+                                    {msg.sender?.role === "landlord" && (
+                                        <Crown className="h-3 w-3 text-amber-500" />
+                                    )}
+                                    {msg.sender?.role === "agent" && (
+                                        <ShieldCheck className="h-3 w-3 text-primary" />
+                                    )}
                                     <span className="text-[8px] font-bold text-stone-300 uppercase tracking-widest">
                                         {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>

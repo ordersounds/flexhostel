@@ -1,25 +1,29 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
+import { User, Session } from "@supabase/supabase-js";
 import { Database } from "@/integrations/supabase/types";
 
 type Profile = Database["public"]["Tables"]["profiles"]["Row"];
 
 interface AuthContextType {
     user: User | null;
+    session: Session | null;
     profile: Profile | null;
     loading: boolean;
     signOut: () => Promise<void>;
+    refreshProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [user, setUser] = useState<User | null>(null);
+    const [session, setSession] = useState<Session | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
     const [loading, setLoading] = useState(true);
+    const profileFetchedRef = useRef(false);
 
-    const fetchProfile = async (userId: string) => {
+    const fetchProfile = useCallback(async (userId: string) => {
         try {
             const { data, error } = await supabase
                 .from("profiles")
@@ -36,71 +40,93 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (err) {
             console.error("Unexpected error fetching profile:", err);
             setProfile(null);
-        } finally {
-            console.log("Profile fetch complete");
-            setLoading(false);
         }
-    };
+    }, []);
+
+    const refreshProfile = useCallback(async () => {
+        if (user?.id) {
+            await fetchProfile(user.id);
+        }
+    }, [user, fetchProfile]);
 
     useEffect(() => {
-        // Initial session check
-        const initAuth = async () => {
-            console.log("Initializing auth session...");
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                setUser(session?.user ?? null);
-                if (session?.user) {
-                    console.log("Session found, fetching profile...");
-                    await fetchProfile(session.user.id);
-                } else {
-                    console.log("No session found.");
+        let isMounted = true;
+
+        // Set up auth state listener FIRST (critical for proper flow)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, currentSession) => {
+                if (!isMounted) return;
+
+                // Synchronous state updates only in callback
+                setSession(currentSession);
+                setUser(currentSession?.user ?? null);
+
+                // If user signed out
+                if (!currentSession?.user) {
+                    setProfile(null);
                     setLoading(false);
+                    profileFetchedRef.current = false;
+                    return;
                 }
-            } catch (err) {
-                console.error("Auth initialization failed:", err);
-                setLoading(false);
+
+                // Defer profile fetch to avoid deadlock
+                if (currentSession?.user && !profileFetchedRef.current) {
+                    profileFetchedRef.current = true;
+                    setTimeout(() => {
+                        fetchProfile(currentSession.user.id).finally(() => {
+                            if (isMounted) setLoading(false);
+                        });
+                    }, 0);
+                }
             }
-        };
+        );
 
-        initAuth();
+        // THEN check for existing session
+        supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+            if (!isMounted) return;
 
-        // Safety timeout to prevent infinite "loading" state
-        const timer = setTimeout(() => {
-            setLoading(prev => {
-                if (prev) {
-                    console.warn("Auth initialization timed out after 5s.");
-                    return false;
-                }
-                return prev;
-            });
-        }, 5000);
+            setSession(existingSession);
+            setUser(existingSession?.user ?? null);
 
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-            console.log("Auth state change event:", event);
-            setUser(session?.user ?? null);
-            if (session?.user) {
-                await fetchProfile(session.user.id);
+            if (existingSession?.user) {
+                fetchProfile(existingSession.user.id).finally(() => {
+                    if (isMounted) setLoading(false);
+                });
             } else {
-                setProfile(null);
                 setLoading(false);
             }
         });
 
+        // Safety timeout to prevent infinite "loading" state
+        const timer = setTimeout(() => {
+            if (isMounted) {
+                setLoading(prev => {
+                    if (prev) {
+                        console.warn("Auth initialization timed out after 5s.");
+                        return false;
+                    }
+                    return prev;
+                });
+            }
+        }, 5000);
+
         return () => {
+            isMounted = false;
             subscription.unsubscribe();
             clearTimeout(timer);
         };
-    }, []);
+    }, [fetchProfile]);
 
-    const signOut = async () => {
+    const signOut = useCallback(async () => {
+        profileFetchedRef.current = false;
         await supabase.auth.signOut();
         setUser(null);
+        setSession(null);
         setProfile(null);
-    };
+    }, []);
 
     return (
-        <AuthContext.Provider value={{ user, profile, loading, signOut }}>
+        <AuthContext.Provider value={{ user, session, profile, loading, signOut, refreshProfile }}>
             {children}
         </AuthContext.Provider>
     );
