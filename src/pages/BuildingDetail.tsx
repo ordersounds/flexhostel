@@ -31,14 +31,6 @@ const buildingAmenities = [
   { icon: <Trash2 className="h-5 w-5" />, name: "Waste Management" },
 ];
 
-// Sample rooms for demo
-const sampleRooms: Room[] = [
-  { id: "1", room_name: "Alabama", price: 450000, cover_image_url: null, amenities: ["Air Conditioning", "Private Bathroom"], status: "available", gender: "any" },
-  { id: "2", room_name: "Alaska", price: 450000, cover_image_url: null, amenities: ["Air Conditioning", "Private Bathroom"], status: "available", gender: "male" },
-  { id: "3", room_name: "Arizona", price: 450000, cover_image_url: null, amenities: ["Air Conditioning", "Private Bathroom"], status: "pending", gender: "female" },
-  { id: "4", room_name: "Arkansas", price: 450000, cover_image_url: null, amenities: ["Air Conditioning", "Private Bathroom"], status: "available", gender: "any" },
-];
-
 const BuildingDetail = () => {
   const { buildingSlug } = useParams();
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -47,39 +39,44 @@ const BuildingDetail = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!buildingSlug) return;
+      const slug = buildingSlug || 'okitipupa';
       setLoading(true);
 
       try {
-        // Fetch Building
+        // Fetch Building by slug
         const { data: bData, error: bError } = await supabase
           .from("buildings")
           .select("*")
-          .eq("slug", buildingSlug)
-          .single();
+          .eq("slug", slug)
+          .maybeSingle();
 
-        if (bError || !bData) {
-          console.error("Building not found:", bError);
-          // Fallback for demo if no data yet, but we should prioritize real data
-        } else {
-          setBuilding(bData);
+        if (bError) {
+          console.error("Building fetch error:", bError);
+          setLoading(false);
+          return;
         }
 
-        // Fetch Rooms for this building
-        const { data: rData, error: rError } = await supabase
-          .from("rooms")
-          .select("id, room_name, price, cover_image_url, amenities, status, gender")
-          .eq("building_id", bData?.id || '11111111-1111-1111-1111-111111111111') // Use hardcoded ID from seed as fallback search
-          .limit(8);
+        if (bData) {
+          setBuilding(bData);
 
-        if (rData && rData.length > 0) {
-          setRooms(rData.map(room => ({
-            ...room,
-            price: Number(room.price),
-            amenities: (room.amenities as string[]) || [],
-            status: room.status as RoomStatus,
-            gender: room.gender as RoomGender,
-          })));
+          // Fetch Rooms for this building
+          const { data: rData, error: rError } = await supabase
+            .from("rooms")
+            .select("id, room_name, price, cover_image_url, amenities, status, gender")
+            .eq("building_id", bData.id)
+            .limit(8);
+
+          if (rError) {
+            console.error("Rooms fetch error:", rError);
+          } else if (rData && rData.length > 0) {
+            setRooms(rData.map(room => ({
+              ...room,
+              price: Number(room.price),
+              amenities: (room.amenities as string[]) || [],
+              status: room.status as RoomStatus,
+              gender: room.gender as RoomGender,
+            })));
+          }
         }
       } catch (err) {
         console.error("Fetch error:", err);

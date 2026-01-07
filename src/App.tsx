@@ -30,19 +30,16 @@ const App = () => (
           <ScrollToTop />
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/okitipupa" element={<BuildingDetail />} />
-            <Route path="/okitipupa/rooms" element={<RoomsList />} />
-            <Route path="/okitipupa/rooms/:roomName" element={<RoomDetail />} />
             <Route path="/admin/seed" element={<SeedDatabase />} />
-            <Route path="/application/:roomName" element={<ApplicationForm />} />
+            <Route path="/application/:roomId" element={<ApplicationForm />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/landlord" element={<LandlordDashboard />} />
-            <Route path="/dashboard/success" element={<PaymentSuccess />} /> {/* Added new route */}
-            {/* Catch-all for any building slug */}
+            <Route path="/dashboard/success" element={<PaymentSuccess />} />
+            {/* Dynamic building routes */}
             <Route path="/:buildingSlug" element={<BuildingDetail />} />
             <Route path="/:buildingSlug/rooms" element={<RoomsList />} />
-            <Route path="/:buildingSlug/rooms/:roomName" element={<RoomDetail />} />
+            <Route path="/:buildingSlug/rooms/:roomId" element={<RoomDetail />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
