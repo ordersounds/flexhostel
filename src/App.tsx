@@ -34,7 +34,7 @@ const App = () => (
             <Route path="/application/:roomId" element={<ApplicationForm />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/landlord" element={<LandlordDashboard />} />
+            <Route path="/landlord/*" element={<LandlordDashboard />} />
             <Route path="/dashboard/success" element={<PaymentSuccess />} />
             {/* Dynamic building routes */}
             <Route path="/:buildingSlug" element={<BuildingDetail />} />
