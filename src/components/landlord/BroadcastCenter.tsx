@@ -16,7 +16,8 @@ import {
     Image as ImageIcon,
     Paperclip,
     MoreVertical,
-    Eye
+    Eye,
+    ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,7 @@ const BroadcastCenter = () => {
     const [loading, setLoading] = useState(true);
     const [selectedBuilding, setSelectedBuilding] = useState<string>("");
     const [selectedConversation, setSelectedConversation] = useState<string>("");
+    const [viewMode, setViewMode] = useState<'list' | 'chat'>('list'); // Mobile navigation state
     const [newMessage, setNewMessage] = useState("");
     const [newAnnouncement, setNewAnnouncement] = useState({
         title: "",
@@ -347,245 +349,488 @@ const BroadcastCenter = () => {
                 </TabsList>
 
                 <TabsContent value="messages" className="space-y-8">
-                    <div className={cn("grid lg:grid-cols-3 gap-8", isMobile ? "h-auto" : "h-[600px]")}>
-                        {/* Conversations List */}
-                        <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden", isMobile ? "lg:col-span-1" : "lg:col-span-1")}>
-                            <div className={cn("border-b border-stone-100", isMobile ? "p-4" : "p-6")}>
-                                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">Conversations</h3>
-                            </div>
-                            <ScrollArea className={cn("", isMobile ? "h-[300px]" : "h-[500px]")}>
-                                <div className={cn("", isMobile ? "p-3 space-y-2" : "p-4 space-y-2")}>
-                                    {getUniqueConversations().map((conversation) => (
-                                        <button
-                                            key={conversation.id}
-                                            onClick={() => setSelectedConversation(conversation.id)}
-                                            className={cn(
-                                                "w-full rounded-2xl text-left transition-all hover:bg-stone-50",
-                                                selectedConversation === conversation.id && "bg-stone-100",
-                                                isMobile ? "p-3" : "p-4"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <Avatar className={cn("", isMobile ? "h-8 w-8" : "h-10 w-10")}>
-                                                    <AvatarImage src="" />
-                                                    <AvatarFallback className="text-xs">
-                                                        {conversation.name.charAt(0)}
-                                                    </AvatarFallback>
-                                                </Avatar>
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center justify-between">
-                                                        <p className={cn("font-bold text-stone-900 truncate", isMobile ? "text-sm" : "text-sm")}>
-                                                            {conversation.name}
-                                                        </p>
-                                                        <span className="text-[10px] text-stone-400">
-                                                            {formatTime(conversation.lastMessage.created_at)}
-                                                        </span>
-                                                    </div>
-                                                    <p className="text-xs text-stone-500 truncate mt-1">
-                                                        {conversation.lastMessage.content}
-                                                    </p>
-                                                    {conversation.type === 'direct' && (
-                                                        <Badge className="mt-1 text-[8px] px-1.5 py-0.5" variant="outline">
-                                                            {conversation.role}
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
+                    {isMobile ? (
+                        // Mobile: Show either list or chat based on viewMode
+                        viewMode === 'list' ? (
+                            // Conversations List - Full screen on mobile
+                            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden">
+                                <div className="p-4 border-b border-stone-100">
+                                    <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">Conversations</h3>
                                 </div>
-                            </ScrollArea>
-                        </div>
-
-                        {/* Chat Area */}
-                        <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col", isMobile ? "lg:col-span-2" : "lg:col-span-2")}>
-                            {selectedConversation ? (
-                                <>
-                                    <div className={cn("border-b border-stone-100", isMobile ? "p-4" : "p-6")}>
+                                <ScrollArea className="h-[500px]">
+                                    <div className="p-3 space-y-2">
+                                        {getUniqueConversations().map((conversation) => (
+                                            <button
+                                                key={conversation.id}
+                                                onClick={() => {
+                                                    setSelectedConversation(conversation.id);
+                                                    setViewMode('chat');
+                                                }}
+                                                className="w-full rounded-2xl p-3 text-left transition-all hover:bg-stone-50"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-8 w-8">
+                                                        <AvatarImage src="" />
+                                                        <AvatarFallback className="text-xs">
+                                                            {conversation.name.charAt(0)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-sm font-bold text-stone-900 truncate">
+                                                                {conversation.name}
+                                                            </p>
+                                                            <span className="text-[10px] text-stone-400">
+                                                                {formatTime(conversation.lastMessage.created_at)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-stone-500 truncate mt-1">
+                                                            {conversation.lastMessage.content}
+                                                        </p>
+                                                        {conversation.type === 'direct' && (
+                                                            <Badge className="mt-1 text-[8px] px-1.5 py-0.5" variant="outline">
+                                                                {conversation.role}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        ) : (
+                            // Chat View - Full screen on mobile
+                            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col h-[600px]">
+                                <div className="p-4 border-b border-stone-100">
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setViewMode('list')}
+                                            className="p-1 h-8 w-8"
+                                        >
+                                            <ArrowLeft className="h-4 w-4" />
+                                        </Button>
                                         <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">
                                             {getUniqueConversations().find(c => c.id === selectedConversation)?.name || 'Chat'}
                                         </h3>
                                     </div>
-                                    <ScrollArea className={cn("flex-1", isMobile ? "max-h-[400px]" : "")}>
-                                        <div className={cn("space-y-4", isMobile ? "p-4" : "p-6")}>
-                                            {getConversationMessages(selectedConversation)
-                                                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                                                .map((message) => (
-                                                <div key={message.id} className="flex gap-3">
-                                                    <Avatar className={cn("", isMobile ? "h-6 w-6" : "h-8 w-8")}>
-                                                        <AvatarImage src={message.sender?.photo_url} />
-                                                        <AvatarFallback className="text-xs">
-                                                            {message.sender?.name?.charAt(0)}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className={cn("font-bold text-stone-900", isMobile ? "text-sm" : "text-sm")}>
-                                                                {message.sender?.name}
-                                                            </span>
-                                                            <span className="text-[10px] text-stone-400">
-                                                                {formatTime(message.created_at)}
-                                                            </span>
-                                                        </div>
-                                                        <p className={cn("text-stone-700 bg-stone-50 rounded-2xl", isMobile ? "text-sm px-3 py-2" : "text-sm px-4 py-2")}>
-                                                            {message.content}
-                                                        </p>
+                                </div>
+                                <ScrollArea className="flex-1">
+                                    <div className="p-4 space-y-4">
+                                        {getConversationMessages(selectedConversation)
+                                            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                                            .map((message) => (
+                                            <div key={message.id} className="flex gap-3">
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={message.sender?.photo_url} />
+                                                    <AvatarFallback className="text-xs">
+                                                        {message.sender?.name?.charAt(0)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-bold text-stone-900">
+                                                            {message.sender?.name}
+                                                        </span>
+                                                        <span className="text-[10px] text-stone-400">
+                                                            {formatTime(message.created_at)}
+                                                        </span>
                                                     </div>
+                                                    <p className="text-sm text-stone-700 bg-stone-50 rounded-2xl px-3 py-2">
+                                                        {message.content}
+                                                    </p>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
-                                    <div className={cn("border-t border-stone-100", isMobile ? "p-4" : "p-6")}>
-                                        <div className="flex gap-3">
-                                            <Input
-                                                value={newMessage}
-                                                onChange={(e) => setNewMessage(e.target.value)}
-                                                placeholder="Type your message..."
-                                                className="flex-1 rounded-2xl"
-                                                onKeyPress={(e) => {
-                                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                                        e.preventDefault();
-                                                        if (selectedConversation.startsWith('building-')) {
-                                                            sendMessage(undefined, selectedConversation.replace('building-', ''));
-                                                        } else {
-                                                            sendMessage(selectedConversation);
-                                                        }
-                                                    }
-                                                }}
-                                            />
-                                            <Button
-                                                onClick={() => {
+                                            </div>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                                <div className="p-4 border-t border-stone-100">
+                                    <div className="flex gap-3">
+                                        <Input
+                                            value={newMessage}
+                                            onChange={(e) => setNewMessage(e.target.value)}
+                                            placeholder="Type your message..."
+                                            className="flex-1 rounded-2xl"
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
                                                     if (selectedConversation.startsWith('building-')) {
                                                         sendMessage(undefined, selectedConversation.replace('building-', ''));
                                                     } else {
                                                         sendMessage(selectedConversation);
                                                     }
-                                                }}
-                                                className="rounded-2xl px-6"
-                                            >
-                                                <Send className="h-4 w-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <div className="flex-1 flex items-center justify-center">
-                                    <div className="text-center">
-                                        <MessageSquare className="h-12 w-12 text-stone-300 mx-auto mb-4" />
-                                        <p className="text-stone-500 font-medium">Select a conversation to start messaging</p>
+                                                }
+                                            }}
+                                        />
+                                        <Button
+                                            onClick={() => {
+                                                if (selectedConversation.startsWith('building-')) {
+                                                    sendMessage(undefined, selectedConversation.replace('building-', ''));
+                                                } else {
+                                                    sendMessage(selectedConversation);
+                                                }
+                                            }}
+                                            className="rounded-2xl px-6"
+                                        >
+                                            <Send className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        )
+                    ) : (
+                        // Desktop: Keep original side-by-side layout
+                        <div className="grid lg:grid-cols-3 gap-8 h-[600px]">
+                            {/* Conversations List */}
+                            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden lg:col-span-1">
+                                <div className="p-6 border-b border-stone-100">
+                                    <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">Conversations</h3>
+                                </div>
+                                <ScrollArea className="h-[500px]">
+                                    <div className="p-4 space-y-2">
+                                        {getUniqueConversations().map((conversation) => (
+                                            <button
+                                                key={conversation.id}
+                                                onClick={() => setSelectedConversation(conversation.id)}
+                                                className={cn(
+                                                    "w-full rounded-2xl text-left transition-all hover:bg-stone-50",
+                                                    selectedConversation === conversation.id && "bg-stone-100",
+                                                    "p-4"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Avatar className="h-10 w-10">
+                                                        <AvatarImage src="" />
+                                                        <AvatarFallback className="text-xs">
+                                                            {conversation.name.charAt(0)}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-sm font-bold text-stone-900 truncate">
+                                                                {conversation.name}
+                                                            </p>
+                                                            <span className="text-[10px] text-stone-400">
+                                                                {formatTime(conversation.lastMessage.created_at)}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-xs text-stone-500 truncate mt-1">
+                                                            {conversation.lastMessage.content}
+                                                        </p>
+                                                        {conversation.type === 'direct' && (
+                                                            <Badge className="mt-1 text-[8px] px-1.5 py-0.5" variant="outline">
+                                                                {conversation.role}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+
+                            {/* Chat Area */}
+                            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col lg:col-span-2">
+                                {selectedConversation ? (
+                                    <>
+                                        <div className="p-6 border-b border-stone-100">
+                                            <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">
+                                                {getUniqueConversations().find(c => c.id === selectedConversation)?.name || 'Chat'}
+                                            </h3>
+                                        </div>
+                                        <ScrollArea className="flex-1">
+                                            <div className="p-6 space-y-4">
+                                                {getConversationMessages(selectedConversation)
+                                                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                                                    .map((message) => (
+                                                    <div key={message.id} className="flex gap-3">
+                                                        <Avatar className="h-8 w-8">
+                                                            <AvatarImage src={message.sender?.photo_url} />
+                                                            <AvatarFallback className="text-xs">
+                                                                {message.sender?.name?.charAt(0)}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="text-sm font-bold text-stone-900">
+                                                                    {message.sender?.name}
+                                                                </span>
+                                                                <span className="text-[10px] text-stone-400">
+                                                                    {formatTime(message.created_at)}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sm text-stone-700 bg-stone-50 rounded-2xl px-4 py-2">
+                                                                {message.content}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </ScrollArea>
+                                        <div className="p-6 border-t border-stone-100">
+                                            <div className="flex gap-3">
+                                                <Input
+                                                    value={newMessage}
+                                                    onChange={(e) => setNewMessage(e.target.value)}
+                                                    placeholder="Type your message..."
+                                                    className="flex-1 rounded-2xl"
+                                                    onKeyPress={(e) => {
+                                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                                            e.preventDefault();
+                                                            if (selectedConversation.startsWith('building-')) {
+                                                                sendMessage(undefined, selectedConversation.replace('building-', ''));
+                                                            } else {
+                                                                sendMessage(selectedConversation);
+                                                            }
+                                                        }
+                                                    }}
+                                                />
+                                                <Button
+                                                    onClick={() => {
+                                                        if (selectedConversation.startsWith('building-')) {
+                                                            sendMessage(undefined, selectedConversation.replace('building-', ''));
+                                                        } else {
+                                                            sendMessage(selectedConversation);
+                                                        }
+                                                    }}
+                                                    className="rounded-2xl px-6"
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex-1 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <MessageSquare className="h-12 w-12 text-stone-300 mx-auto mb-4" />
+                                            <p className="text-stone-500 font-medium">Select a conversation to start messaging</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </TabsContent>
 
                 <TabsContent value="groups" className="space-y-8">
-                    <div className="grid lg:grid-cols-4 gap-8 h-[600px]">
-                        {/* Buildings List */}
-                        <div className="lg:col-span-1 bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden">
-                            <div className="p-6 border-b border-stone-100">
-                                <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">Buildings</h3>
-                            </div>
-                            <ScrollArea className="h-[500px]">
-                                <div className="p-4 space-y-2">
-                                    {buildings.map((building) => (
-                                        <button
-                                            key={building.id}
-                                            onClick={() => setSelectedBuilding(building.id)}
-                                            className={cn(
-                                                "w-full p-4 rounded-2xl text-left transition-all hover:bg-stone-50",
-                                                selectedBuilding === building.id && "bg-stone-100"
-                                            )}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <Building2 className="h-5 w-5 text-stone-400" />
-                                                <div>
-                                                    <p className="text-sm font-bold text-stone-900">{building.name}</p>
-                                                    <p className="text-[10px] text-stone-400 truncate">{building.address}</p>
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
+                    {isMobile ? (
+                        // Mobile: Show either list or chat based on viewMode
+                        viewMode === 'list' ? (
+                            // Buildings List - Full screen on mobile
+                            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden">
+                                <div className="p-4 border-b border-stone-100">
+                                    <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">Buildings</h3>
                                 </div>
-                            </ScrollArea>
-                        </div>
-
-                        {/* Group Chat */}
-                        <div className="lg:col-span-3 bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col">
-                            {selectedBuilding ? (
-                                <>
-                                    <div className="p-6 border-b border-stone-100">
+                                <ScrollArea className="h-[500px]">
+                                    <div className="p-3 space-y-2">
+                                        {buildings.map((building) => (
+                                            <button
+                                                key={building.id}
+                                                onClick={() => {
+                                                    setSelectedBuilding(building.id);
+                                                    setViewMode('chat');
+                                                }}
+                                                className="w-full p-4 rounded-2xl text-left transition-all hover:bg-stone-50"
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Building2 className="h-5 w-5 text-stone-400" />
+                                                    <div>
+                                                        <p className="text-sm font-bold text-stone-900">{building.name}</p>
+                                                        <p className="text-[10px] text-stone-400 truncate">{building.address}</p>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+                        ) : (
+                            // Group Chat View - Full screen on mobile
+                            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col h-[600px]">
+                                <div className="p-4 border-b border-stone-100">
+                                    <div className="flex items-center gap-3">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setViewMode('list')}
+                                            className="p-1 h-8 w-8"
+                                        >
+                                            <ArrowLeft className="h-4 w-4" />
+                                        </Button>
                                         <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">
                                             {buildings.find(b => b.id === selectedBuilding)?.name} Group Chat
                                         </h3>
                                     </div>
-                                    <ScrollArea className="flex-1 p-6">
-                                        <div className="space-y-4">
-                                            {messages
-                                                .filter(m => m.building_id === selectedBuilding)
-                                                .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-                                                .map((message) => (
-                                                <div key={message.id} className="flex gap-3">
-                                                    <Avatar className="h-8 w-8">
-                                                        <AvatarImage src={message.sender?.photo_url} />
-                                                        <AvatarFallback className="text-xs">
-                                                            {message.sender?.name?.charAt(0)}
-                                                        </AvatarFallback>
-                                                    </Avatar>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="text-sm font-bold text-stone-900">
-                                                                {message.sender?.name}
-                                                            </span>
-                                                            <Badge className="text-[8px] px-1.5 py-0.5" variant="outline">
-                                                                {message.sender?.role}
-                                                            </Badge>
-                                                            <span className="text-[10px] text-stone-400">
-                                                                {formatTime(message.created_at)}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-sm text-stone-700 bg-stone-50 rounded-2xl px-4 py-2">
-                                                            {message.content}
-                                                        </p>
+                                </div>
+                                <ScrollArea className="flex-1">
+                                    <div className="p-4 space-y-4">
+                                        {messages
+                                            .filter(m => m.building_id === selectedBuilding)
+                                            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                                            .map((message) => (
+                                            <div key={message.id} className="flex gap-3">
+                                                <Avatar className="h-6 w-6">
+                                                    <AvatarImage src={message.sender?.photo_url} />
+                                                    <AvatarFallback className="text-xs">
+                                                        {message.sender?.name?.charAt(0)}
+                                                    </AvatarFallback>
+                                                </Avatar>
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="text-sm font-bold text-stone-900">
+                                                            {message.sender?.name}
+                                                        </span>
+                                                        <Badge className="text-[8px] px-1.5 py-0.5" variant="outline">
+                                                            {message.sender?.role}
+                                                        </Badge>
+                                                        <span className="text-[10px] text-stone-400">
+                                                            {formatTime(message.created_at)}
+                                                        </span>
                                                     </div>
+                                                    <p className="text-sm text-stone-700 bg-stone-50 rounded-2xl px-3 py-2">
+                                                        {message.content}
+                                                    </p>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    </ScrollArea>
-                                    <div className="p-6 border-t border-stone-100">
-                                        <div className="flex gap-3">
-                                            <Input
-                                                value={newMessage}
-                                                onChange={(e) => setNewMessage(e.target.value)}
-                                                placeholder="Message the group..."
-                                                className="flex-1 rounded-2xl"
-                                                onKeyPress={(e) => {
-                                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                                        e.preventDefault();
-                                                        sendMessage(undefined, selectedBuilding);
-                                                    }
-                                                }}
-                                            />
-                                            <Button
-                                                onClick={() => sendMessage(undefined, selectedBuilding)}
-                                                className="rounded-2xl px-6"
-                                            >
-                                                <Send className="h-4 w-4" />
-                                            </Button>
-                                        </div>
+                                            </div>
+                                        ))}
                                     </div>
-                                </>
-                            ) : (
-                                <div className="flex-1 flex items-center justify-center">
-                                    <div className="text-center">
-                                        <Users className="h-12 w-12 text-stone-300 mx-auto mb-4" />
-                                        <p className="text-stone-500 font-medium">Select a building to join the group chat</p>
+                                </ScrollArea>
+                                <div className="p-4 border-t border-stone-100">
+                                    <div className="flex gap-3">
+                                        <Input
+                                            value={newMessage}
+                                            onChange={(e) => setNewMessage(e.target.value)}
+                                            placeholder="Message the group..."
+                                            className="flex-1 rounded-2xl"
+                                            onKeyPress={(e) => {
+                                                if (e.key === 'Enter' && !e.shiftKey) {
+                                                    e.preventDefault();
+                                                    sendMessage(undefined, selectedBuilding);
+                                                }
+                                            }}
+                                        />
+                                        <Button
+                                            onClick={() => sendMessage(undefined, selectedBuilding)}
+                                            className="rounded-2xl px-6"
+                                        >
+                                            <Send className="h-4 w-4" />
+                                        </Button>
                                     </div>
                                 </div>
-                            )}
+                            </div>
+                        )
+                    ) : (
+                        // Desktop: Keep original side-by-side layout
+                        <div className="grid lg:grid-cols-4 gap-8 h-[600px]">
+                            {/* Buildings List */}
+                            <div className="lg:col-span-1 bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden">
+                                <div className="p-6 border-b border-stone-100">
+                                    <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">Buildings</h3>
+                                </div>
+                                <ScrollArea className="h-[500px]">
+                                    <div className="p-4 space-y-2">
+                                        {buildings.map((building) => (
+                                            <button
+                                                key={building.id}
+                                                onClick={() => setSelectedBuilding(building.id)}
+                                                className={cn(
+                                                    "w-full p-4 rounded-2xl text-left transition-all hover:bg-stone-50",
+                                                    selectedBuilding === building.id && "bg-stone-100"
+                                                )}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <Building2 className="h-5 w-5 text-stone-400" />
+                                                    <div>
+                                                        <p className="text-sm font-bold text-stone-900">{building.name}</p>
+                                                        <p className="text-[10px] text-stone-400 truncate">{building.address}</p>
+                                                    </div>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                </ScrollArea>
+                            </div>
+
+                            {/* Group Chat */}
+                            <div className="lg:col-span-3 bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col">
+                                {selectedBuilding ? (
+                                    <>
+                                        <div className="p-6 border-b border-stone-100">
+                                            <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">
+                                                {buildings.find(b => b.id === selectedBuilding)?.name} Group Chat
+                                            </h3>
+                                        </div>
+                                        <ScrollArea className="flex-1 p-6">
+                                            <div className="space-y-4">
+                                                {messages
+                                                    .filter(m => m.building_id === selectedBuilding)
+                                                    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                                                    .map((message) => (
+                                                    <div key={message.id} className="flex gap-3">
+                                                        <Avatar className="h-8 w-8">
+                                                            <AvatarImage src={message.sender?.photo_url} />
+                                                            <AvatarFallback className="text-xs">
+                                                                {message.sender?.name?.charAt(0)}
+                                                            </AvatarFallback>
+                                                        </Avatar>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <span className="text-sm font-bold text-stone-900">
+                                                                    {message.sender?.name}
+                                                                </span>
+                                                                <Badge className="text-[8px] px-1.5 py-0.5" variant="outline">
+                                                                    {message.sender?.role}
+                                                                </Badge>
+                                                                <span className="text-[10px] text-stone-400">
+                                                                    {formatTime(message.created_at)}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sm text-stone-700 bg-stone-50 rounded-2xl px-4 py-2">
+                                                                {message.content}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </ScrollArea>
+                                        <div className="p-6 border-t border-stone-100">
+                                            <div className="flex gap-3">
+                                                <Input
+                                                    value={newMessage}
+                                                    onChange={(e) => setNewMessage(e.target.value)}
+                                                    placeholder="Message the group..."
+                                                    className="flex-1 rounded-2xl"
+                                                    onKeyPress={(e) => {
+                                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                                            e.preventDefault();
+                                                            sendMessage(undefined, selectedBuilding);
+                                                        }
+                                                    }}
+                                                />
+                                                <Button
+                                                    onClick={() => sendMessage(undefined, selectedBuilding)}
+                                                    className="rounded-2xl px-6"
+                                                >
+                                                    <Send className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="flex-1 flex items-center justify-center">
+                                        <div className="text-center">
+                                            <Users className="h-12 w-12 text-stone-300 mx-auto mb-4" />
+                                            <p className="text-stone-500 font-medium">Select a building to join the group chat</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </TabsContent>
 
                 <TabsContent value="announcements" className="space-y-8">

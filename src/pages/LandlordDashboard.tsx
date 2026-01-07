@@ -28,6 +28,7 @@ import ApplicationCenter from "@/components/landlord/ApplicationCenter";
 import ResidentsManagement from "@/components/landlord/ResidentsManagement";
 import AgentsManagement from "@/components/landlord/AgentsManagement";
 import BroadcastCenter from "@/components/landlord/BroadcastCenter";
+import LandlordSettings from "@/components/landlord/LandlordSettings";
 import AddBuildingDialog from "@/components/landlord/AddBuildingDialog";
 import AddRoomDialog from "@/components/landlord/AddRoomDialog";
 import LandlordFinancials from "@/components/landlord/LandlordFinancials";
@@ -96,7 +97,7 @@ const LandlordDashboard = () => {
             {isMobile && (
                 <Button
                     onClick={() => setSidebarOpen(true)}
-                    className="fixed top-6 left-6 z-40 h-12 w-12 rounded-2xl bg-stone-900 text-white shadow-xl shadow-stone-900/20 hover:scale-110 transition-all duration-300"
+                    className="fixed top-6 right-6 z-40 h-12 w-12 rounded-2xl bg-stone-900 text-white shadow-xl shadow-stone-900/20 hover:scale-110 transition-all duration-300"
                     size="sm"
                 >
                     <Menu className="h-5 w-5" />
@@ -119,6 +120,7 @@ const LandlordDashboard = () => {
                         <Route path="/residents" element={<ResidentsManagement />} />
                         <Route path="/agents" element={<AgentsManagement />} />
                         <Route path="/broadcasts" element={<BroadcastCenter />} />
+                        <Route path="/settings" element={<LandlordSettings />} />
                         <Route path="*" element={<Navigate to="/landlord" replace />} />
                     </Routes>
                 </div>

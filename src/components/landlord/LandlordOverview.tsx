@@ -153,7 +153,7 @@ const LandlordOverview = () => {
     return (
         <div className={cn("animate-reveal-up", isMobile ? "space-y-6" : "space-y-8")}>
             {/* Header */}
-            <div className={cn("flex items-end", isMobile ? "flex-col gap-4" : "justify-between")}>
+            <div className={cn(isMobile ? "flex flex-col gap-4" : "flex justify-between items-end")}>
                 <div>
                     <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         Portfolio Overview<span className="text-primary">.</span>
@@ -215,7 +215,10 @@ const LandlordOverview = () => {
 
             {/* Today's Fire Drill - Urgent Actions */}
             <div className={cn("grid md:grid-cols-3", isMobile ? "gap-6" : "gap-8")}>
-                <div className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 cursor-pointer">
+                <div
+                    onClick={() => navigate("/landlord/applications")}
+                    className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 hover:bg-stone-50/30 transition-all duration-500 cursor-pointer"
+                >
                     <div className={cn("space-y-6", isMobile ? "p-6" : "p-8")}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -231,12 +234,10 @@ const LandlordOverview = () => {
                         </div>
 
                         {businessPulse.pendingApps > 0 ? (
-                            <Button
-                                onClick={() => navigate("/landlord/applications")}
-                                className={cn("w-full rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "h-12" : "h-14")}
-                            >
-                                Review Applications
-                            </Button>
+                            <div className="flex items-center gap-2 text-stone-400 group-hover:text-stone-600 transition-colors">
+                                <ArrowUpRight className="h-4 w-4" />
+                                <span className="text-xs font-medium">Review applications</span>
+                            </div>
                         ) : (
                             <div className="flex items-center gap-2 text-primary">
                                 <CheckCircle className="h-4 w-4" />
@@ -246,7 +247,10 @@ const LandlordOverview = () => {
                     </div>
                 </div>
 
-                <div className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 cursor-pointer">
+                <div
+                    onClick={() => navigate("/landlord/broadcasts")}
+                    className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 hover:bg-stone-50/30 transition-all duration-500 cursor-pointer"
+                >
                     <div className={cn("space-y-6", isMobile ? "p-6" : "p-8")}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -262,12 +266,10 @@ const LandlordOverview = () => {
                         </div>
 
                         {businessPulse.unreadMessages > 0 ? (
-                            <Button
-                                onClick={() => navigate("/landlord/broadcasts")}
-                                className={cn("w-full rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "h-12" : "h-14")}
-                            >
-                                Check Messages
-                            </Button>
+                            <div className="flex items-center gap-2 text-stone-400 group-hover:text-stone-600 transition-colors">
+                                <ArrowUpRight className="h-4 w-4" />
+                                <span className="text-xs font-medium">Check messages</span>
+                            </div>
                         ) : (
                             <div className="flex items-center gap-2 text-primary">
                                 <CheckCircle className="h-4 w-4" />
@@ -277,7 +279,10 @@ const LandlordOverview = () => {
                     </div>
                 </div>
 
-                <div className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 cursor-pointer">
+                <div
+                    onClick={() => navigate("/landlord/properties")}
+                    className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 hover:bg-stone-50/30 transition-all duration-500 cursor-pointer"
+                >
                     <div className={cn("space-y-6", isMobile ? "p-6" : "p-8")}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
@@ -293,12 +298,10 @@ const LandlordOverview = () => {
                         </div>
 
                         {businessPulse.vacantRooms > 0 ? (
-                            <Button
-                                onClick={() => navigate("/landlord/properties")}
-                                className={cn("w-full rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "h-12" : "h-14")}
-                            >
-                                List Properties
-                            </Button>
+                            <div className="flex items-center gap-2 text-stone-400 group-hover:text-stone-600 transition-colors">
+                                <ArrowUpRight className="h-4 w-4" />
+                                <span className="text-xs font-medium">List properties</span>
+                            </div>
                         ) : (
                             <div className="flex items-center gap-2 text-primary">
                                 <CheckCircle className="h-4 w-4" />

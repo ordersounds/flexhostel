@@ -20,6 +20,7 @@ const PropertyPortfolio = () => {
     const [loading, setLoading] = useState(true);
     const [roomsLoading, setRoomsLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [roomSearchQuery, setRoomSearchQuery] = useState("");
 
     useEffect(() => {
         fetchBuildings();
@@ -83,6 +84,15 @@ const PropertyPortfolio = () => {
         b.address.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    const filteredRooms = rooms.filter(room => {
+        const activeTenancy = room.tenancies?.find((t: any) => t.status === "active");
+        const tenantName = activeTenancy?.profiles?.name || "";
+        const roomName = room.room_name || "";
+
+        return roomName.toLowerCase().includes(roomSearchQuery.toLowerCase()) ||
+               tenantName.toLowerCase().includes(roomSearchQuery.toLowerCase());
+    });
+
     if (selectedBuilding) {
         return (
             <div className={cn("animate-reveal-up pb-20", isMobile ? "space-y-8" : "space-y-12")}>
@@ -126,11 +136,24 @@ const PropertyPortfolio = () => {
                     </div>
                 </div>
 
+                {/* Room Search */}
+                <div className="flex justify-start">
+                    <div className="relative flex-1 max-w-sm">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-300" />
+                        <Input
+                            placeholder="Search rooms or tenants..."
+                            className={cn("pl-10 rounded-2xl border-stone-100", isMobile ? "h-12" : "h-14")}
+                            value={roomSearchQuery}
+                            onChange={(e) => setRoomSearchQuery(e.target.value)}
+                        />
+                    </div>
+                </div>
+
                 {/* Rooms Grid */}
                 <div className={cn("grid md:grid-cols-2 lg:grid-cols-3", isMobile ? "gap-6" : "gap-8")}>
                     {roomsLoading ? (
                         [1, 2, 3].map(i => <div key={i} className="h-64 bg-stone-100 rounded-[2.5rem] animate-pulse" />)
-                    ) : rooms.map((room) => {
+                    ) : filteredRooms.map((room) => {
                         const activeTenancy = room.tenancies?.find((t: any) => t.status === "active");
                         const tenantName = activeTenancy?.profiles?.name;
 
@@ -170,19 +193,16 @@ const PropertyPortfolio = () => {
                                         </div>
                                     </div>
 
-                                    <div className="pt-2 flex gap-3">
+                                    <div className="pt-2">
                                         <RoomControlCenter
                                             roomId={room.id}
                                             onSuccess={() => fetchRooms(selectedBuilding.id)}
                                             trigger={
-                                                <Button className={cn("flex-1 rounded-xl bg-stone-900 font-bold uppercase tracking-widest text-[10px]", isMobile ? "h-12" : "h-14")}>
+                                                <Button variant="outline" className={cn("w-full rounded-xl border-stone-200 font-bold uppercase tracking-widest text-[10px]", isMobile ? "h-12" : "h-14")}>
                                                     Room Control
                                                 </Button>
                                             }
                                         />
-                                        <Button variant="outline" className={cn("rounded-xl border-stone-200 p-0 hover:bg-stone-50", isMobile ? "h-12 w-12" : "h-14 w-14")}>
-                                            <MoreHorizontal className="h-5 w-5 text-stone-400" />
-                                        </Button>
                                     </div>
                                 </div>
                             </div>
@@ -209,7 +229,7 @@ const PropertyPortfolio = () => {
     return (
         <div className={cn("animate-reveal-up", isMobile ? "space-y-8" : "space-y-12")}>
             {/* Header */}
-            <div className={cn("flex items-end", isMobile ? "flex-col gap-4" : "justify-between")}>
+            <div className={cn(isMobile ? "flex flex-col gap-4" : "flex justify-between items-end")}>
                 <div>
                     <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         Property Portfolio<span className="text-primary">.</span>
@@ -287,14 +307,7 @@ const PropertyPortfolio = () => {
                                         </div>
                                     </div>
 
-                                    <div className="pt-2 flex gap-3">
-                                        <Button className={cn("flex-1 rounded-xl bg-stone-900 font-bold uppercase tracking-widest text-[10px]", isMobile ? "h-12" : "h-14")}>
-                                            Explore Assets
-                                        </Button>
-                                        <Button variant="outline" className={cn("rounded-xl border-stone-200 p-0 hover:bg-stone-50 transition-colors", isMobile ? "h-12 w-12" : "h-14 w-14")}>
-                                            <ChevronRight className="h-5 w-5 text-stone-400" />
-                                        </Button>
-                                    </div>
+
                                 </div>
                             </div>
                         ))}

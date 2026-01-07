@@ -70,14 +70,14 @@ const LandlordSidebar = ({ onLogout, isOpen, onClose }: LandlordSidebarProps) =>
     const SidebarContent = () => (
         <>
             <div className="p-8">
-                <div className="flex items-center gap-3 mb-10">
-                    <div className="h-10 w-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
+                <Link to="/" onClick={isMobile ? onClose : undefined} className="group flex items-center gap-3 mb-10 cursor-pointer">
+                    <div className="h-10 w-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20 group-hover:shadow-primary/30 transition-shadow">
                         <Building2 className="text-white h-6 w-6" />
                     </div>
-                    <span className="font-display text-xl font-bold tracking-tighter text-stone-900">
+                    <span className="font-display text-xl font-bold tracking-tighter text-stone-900 group-hover:text-primary transition-colors">
                         Flex<span className="text-primary">Admin</span>
                     </span>
-                </div>
+                </Link>
 
                 <nav className="space-y-1">
                     {navItems.map((item) => {
@@ -113,7 +113,7 @@ const LandlordSidebar = ({ onLogout, isOpen, onClose }: LandlordSidebarProps) =>
 
             <div className="mt-auto p-8 border-t border-stone-50">
                 <Link
-                    to="/settings"
+                    to="/landlord/settings"
                     onClick={isMobile ? onClose : undefined}
                     className="flex items-center gap-3 px-4 py-3 text-stone-400 hover:text-stone-900 transition-colors mb-4"
                 >

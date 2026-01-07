@@ -35,10 +35,14 @@ interface RoomControlCenterProps {
     roomId: string;
     onSuccess?: () => void;
     trigger?: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
 }
 
-const RoomControlCenter = ({ roomId, onSuccess, trigger }: RoomControlCenterProps) => {
-    const [open, setOpen] = useState(false);
+const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onOpenChange }: RoomControlCenterProps) => {
+    const [internalOpen, setInternalOpen] = useState(false);
+    const open = externalOpen !== undefined ? externalOpen : internalOpen;
+    const setOpen = onOpenChange || setInternalOpen;
     const [loading, setLoading] = useState(false);
     const [data, setData] = useState<any>(null);
     const [charges, setCharges] = useState<any[]>([]);
@@ -397,9 +401,6 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger }: RoomControlCenterProp
 
                         <DialogFooter className="p-10 border-t border-stone-50 gap-4">
                             <Button variant="ghost" className="rounded-2xl h-14 font-bold uppercase tracking-widest text-[10px] flex-1" onClick={() => setOpen(false)}>Close Control</Button>
-                            <Button className="rounded-2xl bg-stone-900 text-white h-14 px-8 font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20 flex-1">
-                                Manage Tenancy <ExternalLink className="h-3 w-3 ml-2" />
-                            </Button>
                         </DialogFooter>
                     </>
                 )}
@@ -409,3 +410,4 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger }: RoomControlCenterProp
 };
 
 export default RoomControlCenter;
+

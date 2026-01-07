@@ -76,7 +76,7 @@ const LandlordFinancials = () => {
 
     return (
         <div className={cn("animate-reveal-up pb-20", isMobile ? "space-y-8" : "space-y-12")}>
-            <div className={cn("flex items-end", isMobile ? "flex-col gap-4" : "justify-between")}>
+            <div className={cn(isMobile ? "flex flex-col gap-4" : "flex justify-between items-end")}>
                 <div>
                     <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         General Ledger<span className="text-primary">.</span>
