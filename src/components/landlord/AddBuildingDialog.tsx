@@ -65,7 +65,7 @@ const AddBuildingDialog = ({ onSuccess, trigger }: AddBuildingDialogProps) => {
                 <DialogHeader className="sr-only">
                     <DialogTitle>Register New Building</DialogTitle>
                     <DialogDescription>
-                        Add a new property to your portfolio.
+                        Add new properties to your portfolio. 
                     </DialogDescription>
                 </DialogHeader>
 
