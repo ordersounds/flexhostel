@@ -27,6 +27,9 @@ import {
     MessageSquare,
     ChevronRight
 } from "lucide-react";
+
+// Alias for consistency in UI
+const CheckCircle = CheckCircle2;
 import {
     Dialog,
     DialogContent,
@@ -143,12 +146,12 @@ const LandlordDashboard = () => {
 
         setIsBroadcasting(true);
         const { error } = await supabase
-            .from("broadcasts")
+            .from("announcements")
             .insert({
                 title: broadcastTitle,
                 content: broadcastContent,
                 building_id: broadcastBuildingId,
-                landlord_id: profile.id,
+                created_by: profile.id,
             });
 
         if (error) {
