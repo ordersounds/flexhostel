@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Building2, User, LogOut, LayoutDashboard, ChevronDown, Menu, X } from "lucide-react";
+import { Building2, User, LogOut, LayoutDashboard, ChevronDown, Menu, X, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,49 +16,13 @@ import {
 
 const Header = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { user, profile, loading, signOut } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-
-      if (session?.user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("name, role, photo_url")
-          .eq("id", session.user.id)
-          .single();
-        setProfile(data);
-      }
-      setLoading(false);
-    };
-
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("name, role, photo_url")
-          .eq("id", session.user.id)
-          .single();
-        setProfile(data);
-      } else {
-        setProfile(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
     setMobileMenuOpen(false);
+    await signOut();
+    toast.success("Signed out successfully");
     navigate("/");
   };
 
@@ -101,39 +67,49 @@ const Header = () => {
           {loading ? (
             <div className="h-10 w-20 bg-stone-100 rounded-full animate-pulse" />
           ) : user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="rounded-full h-11 pl-2 pr-3 sm:pr-4 gap-2 border border-stone-100 hover:bg-stone-50">
-                  <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center overflow-hidden border-2 border-white">
-                    {profile?.photo_url ? (
-                      <img src={profile.photo_url} alt={profile.name} className="h-full w-full object-cover" />
-                    ) : (
-                      <User className="h-4 w-4 text-stone-400" />
-                    )}
-                  </div>
-                  <span className="text-sm font-semibold text-stone-700 hidden sm:block">
-                    {profile?.name?.split(" ")[0] || "Account"}
-                  </span>
-                  <ChevronDown className="h-4 w-4 text-stone-400 hidden sm:block" />
+            <div className="flex items-center gap-2">
+              {/* Message Indicator */}
+              <Link to="/dashboard?tab=messages">
+                <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 border border-stone-100 hover:bg-stone-50 text-stone-400 hover:text-primary transition-colors relative">
+                  <MessageSquare className="h-5 w-5" />
+                  {/* Optional: Add unread dot here if we have that state later */}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-stone-100 shadow-xl">
-                <DropdownMenuLabel className="text-xs font-bold text-stone-400 uppercase tracking-widest">
-                  {profile?.role || "Member"}
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator className="bg-stone-100" />
-                <DropdownMenuItem asChild className="rounded-xl cursor-pointer h-11">
-                  <Link to={getDashboardLink()} className="flex items-center gap-3">
-                    <LayoutDashboard className="h-4 w-4 text-primary" />
-                    <span className="font-medium">{profile?.role === "landlord" ? "Landlord Portal" : "Dashboard"}</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleSignOut} className="rounded-xl cursor-pointer h-11 text-red-500 focus:text-red-500 focus:bg-red-50">
-                  <LogOut className="h-4 w-4 mr-3" />
-                  <span className="font-medium">Sign Out</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              </Link>
+
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="rounded-full h-11 pl-2 pr-3 sm:pr-4 gap-2 border border-stone-100 hover:bg-stone-50">
+                    <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center overflow-hidden border-2 border-white">
+                      {profile?.photo_url ? (
+                        <img src={profile.photo_url} alt={profile.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <User className="h-4 w-4 text-stone-400" />
+                      )}
+                    </div>
+                    <span className="text-sm font-semibold text-stone-700 hidden sm:block">
+                      {profile?.name?.split(" ")[0] || "Account"}
+                    </span>
+                    <ChevronDown className="h-4 w-4 text-stone-400 hidden sm:block" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-stone-100 shadow-xl">
+                  <DropdownMenuLabel className="text-xs font-bold text-stone-400 uppercase tracking-widest">
+                    {profile?.role || "Member"}
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-stone-100" />
+                  <DropdownMenuItem asChild className="rounded-xl cursor-pointer h-11">
+                    <Link to={getDashboardLink()} className="flex items-center gap-3">
+                      <LayoutDashboard className="h-4 w-4 text-primary" />
+                      <span className="font-medium">{profile?.role === "landlord" ? "Landlord Portal" : "Dashboard"}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleSignOut} className="rounded-xl cursor-pointer h-11 text-red-500 focus:text-red-500 focus:bg-red-50">
+                    <LogOut className="h-4 w-4 mr-3" />
+                    <span className="font-medium">Sign Out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : (
             <>
               <Link

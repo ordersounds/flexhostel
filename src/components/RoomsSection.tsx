@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, Filter } from "lucide-react";
+import { ArrowRight, Filter, Zap, Search } from "lucide-react";
 import RoomCard from "@/components/RoomCard";
 import { supabase } from "@/integrations/supabase/client";
 import roomInterior from "@/assets/room-interior.jpg";
@@ -23,74 +23,11 @@ interface Room {
   };
 }
 
-// Sample rooms for demo - will be replaced with real data
-const sampleRooms: Room[] = [
-  {
-    id: "1",
-    room_name: "Alabama",
-    price: 450000,
-    cover_image_url: roomInterior,
-    amenities: ["Air Conditioning", "Private Bathroom", "Study Desk", "Wardrobe", "Reading Lamp"],
-    status: "available",
-    gender: "any",
-    building: { name: "Okitipupa Building", slug: "okitipupa" },
-  },
-  {
-    id: "2",
-    room_name: "Alaska",
-    price: 450000,
-    cover_image_url: roomInterior,
-    amenities: ["Air Conditioning", "Private Bathroom", "Study Desk", "WiFi Access"],
-    status: "available",
-    gender: "male",
-    building: { name: "Okitipupa Building", slug: "okitipupa" },
-  },
-  {
-    id: "3",
-    room_name: "Arizona",
-    price: 450000,
-    cover_image_url: roomInterior,
-    amenities: ["Air Conditioning", "Private Bathroom", "Wardrobe"],
-    status: "pending",
-    gender: "female",
-    building: { name: "Okitipupa Building", slug: "okitipupa" },
-  },
-  {
-    id: "4",
-    room_name: "Arkansas",
-    price: 450000,
-    cover_image_url: roomInterior,
-    amenities: ["Air Conditioning", "Private Bathroom", "Study Desk", "Power Backup"],
-    status: "available",
-    gender: "any",
-    building: { name: "Okitipupa Building", slug: "okitipupa" },
-  },
-  {
-    id: "5",
-    room_name: "California",
-    price: 480000,
-    cover_image_url: roomInterior,
-    amenities: ["Air Conditioning", "Private Bathroom", "Study Desk", "Window View", "Wardrobe"],
-    status: "available",
-    gender: "any",
-    building: { name: "Okitipupa Building", slug: "okitipupa" },
-  },
-  {
-    id: "6",
-    room_name: "Colorado",
-    price: 450000,
-    cover_image_url: roomInterior,
-    amenities: ["Air Conditioning", "Private Bathroom", "Ceiling Fan"],
-    status: "occupied",
-    gender: "male",
-    building: { name: "Okitipupa Building", slug: "okitipupa" },
-  },
-];
 
 const RoomsSection = () => {
   const [filter, setFilter] = useState<"all" | "available">("all");
-  const [rooms, setRooms] = useState<Room[]>(sampleRooms);
-  const [loading, setLoading] = useState(false);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // Fetch rooms from database
   useEffect(() => {
@@ -131,9 +68,12 @@ const RoomsSection = () => {
             },
           }));
           setRooms(formattedRooms);
+        } else {
+          setRooms([]);
         }
       } catch (error) {
-        console.log("Using sample rooms data");
+        console.error("Supabase Error:", error);
+        setRooms([]);
       } finally {
         setLoading(false);
       }
@@ -178,8 +118,8 @@ const RoomsSection = () => {
             <button
               onClick={() => setFilter("all")}
               className={`px-8 py-2.5 text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 ${filter === "all"
-                  ? "bg-primary text-white shadow-lg"
-                  : "text-stone-500 hover:text-stone-900 hover:bg-stone-50"
+                ? "bg-primary text-white shadow-lg"
+                : "text-stone-500 hover:text-stone-900 hover:bg-stone-50"
                 }`}
             >
               All Rooms ({rooms.length})
@@ -187,8 +127,8 @@ const RoomsSection = () => {
             <button
               onClick={() => setFilter("available")}
               className={`px-8 py-2.5 text-xs font-bold uppercase tracking-widest rounded-full transition-all duration-300 ${filter === "available"
-                  ? "bg-primary text-white shadow-lg"
-                  : "text-stone-500 hover:text-stone-900 hover:bg-stone-50"
+                ? "bg-primary text-white shadow-lg"
+                : "text-stone-500 hover:text-stone-900 hover:bg-stone-50"
                 }`}
             >
               Available ({rooms.filter(r => r.status === "available").length})
@@ -202,27 +142,46 @@ const RoomsSection = () => {
         </div>
 
         {/* Enhanced Room Grid - Mobile App Feed Style */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 md:gap-8 lg:gap-12 mb-24">
-          {filteredRooms.map((room, index) => (
-            <div
-              key={room.id}
-              className="animate-reveal-up"
-              style={{ animationDelay: `${200 + index * 100}ms` }}
-            >
-              <RoomCard
-                id={room.id}
-                roomName={room.room_name}
-                buildingName={room.building.name}
-                buildingSlug={room.building.slug}
-                price={room.price}
-                coverImage={room.cover_image_url || roomInterior}
-                amenities={room.amenities}
-                status={room.status}
-                gender={room.gender}
-              />
+        {rooms.length > 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 md:gap-8 lg:gap-12 mb-24">
+            {filteredRooms.map((room, index) => (
+              <div
+                key={room.id}
+                className="animate-reveal-up"
+                style={{ animationDelay: `${200 + index * 100}ms` }}
+              >
+                <RoomCard
+                  id={room.id}
+                  roomName={room.room_name}
+                  buildingName={room.building.name}
+                  buildingSlug={room.building.slug}
+                  price={room.price}
+                  coverImage={room.cover_image_url || roomInterior}
+                  amenities={room.amenities}
+                  status={room.status}
+                  gender={room.gender}
+                />
+              </div>
+            ))}
+          </div>
+        ) : !loading ? (
+          <div className="max-w-2xl mx-auto py-24 text-center space-y-8 animate-reveal-up">
+            <div className="w-20 h-20 rounded-full bg-stone-100 flex items-center justify-center mx-auto mb-8 border border-stone-200">
+              <Zap className="h-8 w-8 text-stone-300" />
             </div>
-          ))}
-        </div>
+            <h3 className="font-display text-3xl font-bold text-stone-900 tracking-tighter">"Awaiting Residence Enrollment"</h3>
+            <p className="text-stone-500 font-light leading-relaxed max-w-md mx-auto">
+              Our flagship suites in Okitipupa are currently being Provisioned in the registry.
+              Please check back shortly or contact our administrator.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10 md:gap-8 lg:gap-12 mb-24">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="aspect-[4/5] rounded-[2.5rem] bg-stone-100 animate-pulse" />
+            ))}
+          </div>
+        )}
 
         {/* Premium CTA Box */}
         <div className="animate-reveal-up delay-300">

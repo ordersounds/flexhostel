@@ -4,6 +4,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, Check, Upload, User, School, Users, DoorOpen } from "lucide-react";
 import roomInterior from "@/assets/room-interior.jpg";
@@ -18,9 +19,10 @@ const steps = [
 const ApplicationForm = () => {
   const { roomName } = useParams();
   const navigate = useNavigate();
+  const { user, profile, loading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [user, setUser] = useState<any>(null);
+  const [roomId, setRoomId] = useState<string | null>(null);
 
   const displayRoomName = roomName?.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Alabama";
 
@@ -52,36 +54,50 @@ const ApplicationForm = () => {
   });
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("Please sign in to apply");
-        navigate("/auth");
-        return;
-      }
-      setUser(session.user);
+    // Sync profile data to formData when it changes
+    if (profile) {
       setFormData(prev => ({
         ...prev,
         personal: {
           ...prev.personal,
-          name: session.user.user_metadata?.name || "",
-          email: session.user.email || "",
+          name: profile.name || prev.personal.name,
+          email: profile.email || prev.personal.email,
         }
       }));
+    }
+  }, [profile]);
+
+  useEffect(() => {
+    const fetchRoom = async () => {
+      if (!roomName) return;
+      setLoading(true);
+
+      // Fetch Room ID
+      const { data: roomData, error: roomError } = await supabase
+        .from("rooms")
+        .select("id")
+        .ilike("room_name", roomName.replace(/-/g, " "))
+        .single();
+
+      if (roomError || !roomData) {
+        toast.error(`The room "${roomName}" is not currently synchronized with our database. Please select an available suite.`);
+        navigate("/okitipupa/rooms");
+        return;
+      }
+      setRoomId(roomData.id);
+      setLoading(false);
     };
 
-    checkAuth();
+    fetchRoom();
+  }, [navigate, roomName]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!session) {
-        navigate("/auth");
-      } else {
-        setUser(session.user);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+  // Auth Protection
+  useEffect(() => {
+    if (!authLoading && !user) {
+      toast.error("Please sign in to apply");
+      navigate("/auth");
+    }
+  }, [user, authLoading, navigate]);
 
   const handleNext = () => {
     if (currentStep < 4) {
@@ -96,10 +112,23 @@ const ApplicationForm = () => {
   };
 
   const handleSubmit = async () => {
+    if (!roomId || !user) {
+      toast.error("Incomplete session data");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      // In a real app, we'd create the application here
+      const { error } = await supabase.from("applications").insert({
+        user_id: user.id,
+        room_id: roomId,
+        status: "pending",
+        submitted_data: formData as any,
+      });
+
+      if (error) throw error;
+
       toast.success("Application submitted successfully!");
       navigate("/dashboard");
     } catch (error: any) {
@@ -423,12 +452,25 @@ const ApplicationForm = () => {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Applicant</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Contact Details</p>
                           <p className="text-sm font-bold text-stone-900">{formData.personal.name}</p>
+                          <p className="text-xs text-stone-500 mt-1">{formData.personal.phone}</p>
                         </div>
                         <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
-                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Institution</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Academic Profile</p>
                           <p className="text-sm font-bold text-stone-900 truncate">{formData.school.institution || "Not specified"}</p>
+                          <p className="text-xs text-stone-500 mt-1">{formData.school.faculty} • {formData.school.department}</p>
+                        </div>
+                        <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Matric / Student ID</p>
+                          <p className="text-sm font-bold text-stone-900">{formData.school.matricNumber || "Pending Verification"}</p>
+                        </div>
+                        <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Living Preference</p>
+                          <p className="text-sm font-bold text-stone-900">{formData.roommate.hasRoommate ? "Roommate Requested" : "Single Occupancy"}</p>
+                          {formData.roommate.hasRoommate && (
+                            <p className="text-xs text-stone-500 mt-1">{formData.roommate.name} ({formData.roommate.phone})</p>
+                          )}
                         </div>
                       </div>
 

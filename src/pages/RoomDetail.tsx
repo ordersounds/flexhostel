@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import {
   ArrowLeft,
   Snowflake,
@@ -34,22 +35,92 @@ const RoomDetail = () => {
   const { roomName } = useParams();
   const navigate = useNavigate();
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [room, setRoom] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Sample room data
-  const room = {
-    id: "1",
-    room_name: roomName?.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Alabama",
-    price: 450000,
-    description: "A comfortable and modern self-contained room perfect for focused students. Features natural lighting, ample storage space, and a private bathroom.",
-    amenities: ["Air Conditioning", "Private Bathroom", "Study Desk", "Wardrobe", "Reading Lamp", "WiFi Access"],
-    status: "available" as RoomStatus,
-    gender: "any",
-    images: [roomInterior, roomInterior, roomInterior],
-    agent: {
-      name: "John Adeyemi",
-      phone: "+234 801 234 5678",
-    },
-  };
+  useEffect(() => {
+    const fetchRoom = async () => {
+      if (!roomName) return;
+      setLoading(true);
+
+      try {
+        const { data, error } = await supabase
+          .from("rooms")
+          .select(`
+            *,
+            buildings (
+              name,
+              slug,
+              address
+            ),
+            agent:profiles!rooms_agent_id_fkey (
+              name,
+              phone_number,
+              photo_url
+            )
+          `)
+          .ilike("room_name", roomName.replace(/-/g, " "))
+          .single();
+
+        if (error || !data) {
+          toast.error("Room not found");
+          navigate("/okitipupa/rooms");
+          return;
+        }
+
+        setRoom({
+          ...data,
+          images: data.gallery_images && (data.gallery_images as any).length > 0
+            ? data.gallery_images
+            : [data.cover_image_url || roomInterior, roomInterior, roomInterior],
+          amenities: (data.amenities as string[]) || [],
+          agent: data.agent || {
+            name: "John Adeyemi",
+            phone: "+234 801 234 5678",
+          }
+        });
+      } catch (err) {
+        console.error("Error fetching room:", err);
+        toast.error("An error occurred while loading the room");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRoom();
+  }, [roomName, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-stone-400 font-bold uppercase tracking-[0.2em] text-xs">Calibrating Suite Details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!room) {
+    return (
+      <div className="min-h-screen bg-stone-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center space-y-8 animate-reveal-up">
+          <div className="w-24 h-24 rounded-full bg-stone-200 flex items-center justify-center mx-auto mb-8">
+            <DoorOpen className="h-10 w-10 text-stone-400" />
+          </div>
+          <h1 className="font-display text-4xl font-bold text-stone-900 tracking-tighter italic">"Suite Not Synchronized"</h1>
+          <p className="text-stone-500 font-light leading-relaxed">
+            The room you are looking for ({roomName?.replace("-", " ")}) does not exist in our flagship registry yet.
+          </p>
+          <div className="pt-8">
+            <Button asChild size="lg" className="rounded-full px-10 font-bold bg-stone-950 text-white">
+              <Link to="/okitipupa/rooms">Return to Registry</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const formattedPrice = new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -139,7 +210,7 @@ const RoomDetail = () => {
                         Luxury Suite
                       </Badge>
                       <span className="text-stone-300">•</span>
-                      <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">Okitipupa, Ondo</span>
+                      <span className="text-xs font-bold text-stone-400 uppercase tracking-widest">{room.buildings?.address || "Okitipupa, Ondo"}</span>
                     </div>
                     <h1 className="font-display text-5xl md:text-7xl font-bold text-stone-900 tracking-tighter leading-none mb-4">
                       {room.room_name}
@@ -187,7 +258,7 @@ const RoomDetail = () => {
                         <div>
                           <p className="text-lg font-bold tracking-tight">{room.agent.name}</p>
                           <p className="text-stone-400 text-sm mb-4">Dedicated Residence Agent</p>
-                          <a href={`tel:${room.agent.phone}`} className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest hover:text-teal-400 transition-colors">
+                          <a href={`tel:${room.agent.phone_number || room.agent.phone}`} className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-widest hover:text-teal-400 transition-colors">
                             <Phone className="h-4 w-4" />
                             Direct Contact
                           </a>

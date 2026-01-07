@@ -64,8 +64,26 @@ const Auth = () => {
 
         if (error) throw error;
 
+        // Wait for session to be fully established before navigating
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          throw new Error("Session not established. Please try again.");
+        }
+
+        // Check user role for correct redirect
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("id", session.user.id)
+          .single();
+
         toast.success("Welcome back to Flex Hostel");
-        navigate("/dashboard");
+
+        if (profile?.role === "landlord") {
+          navigate("/landlord");
+        } else {
+          navigate("/dashboard");
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email: formData.email,

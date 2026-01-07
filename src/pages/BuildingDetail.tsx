@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { MapPin, Shield, Zap, Wifi, Trash2, Camera, ArrowLeft } from "lucide-react";
-import heroBuilding from "@/assets/hero-building.jpg";
+import buildingCover from "@/assets/building-cover.jpg";
 import roomInterior from "@/assets/room-interior.jpg";
 
 type RoomStatus = "available" | "pending" | "occupied";
@@ -41,27 +41,65 @@ const sampleRooms: Room[] = [
 
 const BuildingDetail = () => {
   const { buildingSlug } = useParams();
-  const [rooms, setRooms] = useState<Room[]>(sampleRooms);
+  const [rooms, setRooms] = useState<Room[]>([]);
+  const [building, setBuilding] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchRooms = async () => {
-      const { data } = await supabase
-        .from("rooms")
-        .select("id, room_name, price, cover_image_url, amenities, status, gender")
-        .limit(8);
+    const fetchData = async () => {
+      if (!buildingSlug) return;
+      setLoading(true);
 
-      if (data && data.length > 0) {
-        setRooms(data.map(room => ({
-          ...room,
-          price: Number(room.price),
-          amenities: (room.amenities as string[]) || [],
-          status: room.status as RoomStatus,
-          gender: room.gender as RoomGender,
-        })));
+      try {
+        // Fetch Building
+        const { data: bData, error: bError } = await supabase
+          .from("buildings")
+          .select("*")
+          .eq("slug", buildingSlug)
+          .single();
+
+        if (bError || !bData) {
+          console.error("Building not found:", bError);
+          // Fallback for demo if no data yet, but we should prioritize real data
+        } else {
+          setBuilding(bData);
+        }
+
+        // Fetch Rooms for this building
+        const { data: rData, error: rError } = await supabase
+          .from("rooms")
+          .select("id, room_name, price, cover_image_url, amenities, status, gender")
+          .eq("building_id", bData?.id || '11111111-1111-1111-1111-111111111111') // Use hardcoded ID from seed as fallback search
+          .limit(8);
+
+        if (rData && rData.length > 0) {
+          setRooms(rData.map(room => ({
+            ...room,
+            price: Number(room.price),
+            amenities: (room.amenities as string[]) || [],
+            status: room.status as RoomStatus,
+            gender: room.gender as RoomGender,
+          })));
+        }
+      } catch (err) {
+        console.error("Fetch error:", err);
+      } finally {
+        setLoading(false);
       }
     };
-    fetchRooms();
-  }, []);
+    fetchData();
+  }, [buildingSlug]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+          <p className="text-stone-400 font-bold uppercase tracking-[0.2em] text-xs">Accessing Residence Records...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -71,7 +109,7 @@ const BuildingDetail = () => {
         {/* Editorial Hero */}
         <section className="relative h-[60vh] min-h-[500px] flex items-end pb-20 overflow-hidden">
           <img
-            src={heroBuilding}
+            src={buildingCover}
             alt="Flex Hostel Okitipupa"
             className="absolute inset-0 w-full h-full object-cover"
           />
@@ -93,12 +131,21 @@ const BuildingDetail = () => {
                 Featured Building
               </div>
               <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-black text-white mb-6 tracking-tighter leading-[0.9]">
-                Flex Hostel <br className="hidden md:block" />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">Okitipupa.</span>
+                {building?.name ? (
+                  <>
+                    Flex Hostel <br className="hidden md:block" />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">{building.name.split(' ').pop()}.</span>
+                  </>
+                ) : (
+                  <>
+                    Flex Hostel <br className="hidden md:block" />
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-teal-400">Okitipupa.</span>
+                  </>
+                )}
               </h1>
               <p className="flex items-center gap-3 text-white/60 font-medium tracking-wide">
                 <MapPin className="h-5 w-5 text-primary" />
-                Broad Street, Okitipupa, Ondo State, Nigeria
+                {building?.address || "Broad Street, Okitipupa, Ondo State, Nigeria"}
               </p>
             </div>
           </div>
