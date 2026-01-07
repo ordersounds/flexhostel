@@ -27,6 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface Message {
     id: string;
@@ -64,6 +65,7 @@ interface Building {
 }
 
 const BroadcastCenter = () => {
+    const isMobile = useIsMobile();
     const [messages, setMessages] = useState<Message[]>([]);
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [buildings, setBuildings] = useState<Building[]>([]);
@@ -318,52 +320,53 @@ const BroadcastCenter = () => {
     };
 
     return (
-        <div className="space-y-12 animate-reveal-up">
+        <div className={cn("animate-reveal-up", isMobile ? "space-y-8" : "space-y-12")}>
             <div className="flex justify-between items-end">
                 <div>
-                    <h2 className="font-display text-5xl font-bold text-stone-900 tracking-tighter">
+                    <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         Communication Hub<span className="text-primary">.</span>
                     </h2>
-                    <p className="text-stone-500 text-lg mt-2 font-medium">Connect with residents, manage announcements, and oversee building discussions.</p>
+                    <p className="text-stone-500 mt-2 font-medium" style={{fontSize: isMobile ? '14px' : '18px'}}>Connect with residents, manage announcements, and oversee building discussions.</p>
                 </div>
             </div>
 
             <Tabs defaultValue="messages" className="w-full">
-                <TabsList className="bg-stone-100/50 p-1.5 rounded-[1.5rem] mb-12 flex w-fit">
-                    <TabsTrigger value="messages" className="rounded-2xl px-8 py-3.5 data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900">
+                <TabsList className={cn("bg-stone-100/50 p-1.5 rounded-[1.5rem] flex", isMobile ? "flex-col h-auto space-y-1 mb-8" : "w-fit mb-12")}>
+                    <TabsTrigger value="messages" className={cn("rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900", isMobile ? "py-3 px-6" : "px-8 py-3.5")}>
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Messages
                     </TabsTrigger>
-                    <TabsTrigger value="groups" className="rounded-2xl px-8 py-3.5 data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900">
+                    <TabsTrigger value="groups" className={cn("rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900", isMobile ? "py-3 px-6" : "px-8 py-3.5")}>
                         <Users className="h-4 w-4 mr-2" />
                         Group Chats
                     </TabsTrigger>
-                    <TabsTrigger value="announcements" className="rounded-2xl px-8 py-3.5 data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900">
+                    <TabsTrigger value="announcements" className={cn("rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900", isMobile ? "py-3 px-6" : "px-8 py-3.5")}>
                         <Megaphone className="h-4 w-4 mr-2" />
                         Announcements
                     </TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="messages" className="space-y-8">
-                    <div className="grid lg:grid-cols-3 gap-8 h-[600px]">
+                    <div className={cn("grid lg:grid-cols-3 gap-8", isMobile ? "h-auto" : "h-[600px]")}>
                         {/* Conversations List */}
-                        <div className="lg:col-span-1 bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden">
-                            <div className="p-6 border-b border-stone-100">
+                        <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden", isMobile ? "lg:col-span-1" : "lg:col-span-1")}>
+                            <div className={cn("border-b border-stone-100", isMobile ? "p-4" : "p-6")}>
                                 <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">Conversations</h3>
                             </div>
-                            <ScrollArea className="h-[500px]">
-                                <div className="p-4 space-y-2">
+                            <ScrollArea className={cn("", isMobile ? "h-[300px]" : "h-[500px]")}>
+                                <div className={cn("", isMobile ? "p-3 space-y-2" : "p-4 space-y-2")}>
                                     {getUniqueConversations().map((conversation) => (
                                         <button
                                             key={conversation.id}
                                             onClick={() => setSelectedConversation(conversation.id)}
                                             className={cn(
-                                                "w-full p-4 rounded-2xl text-left transition-all hover:bg-stone-50",
-                                                selectedConversation === conversation.id && "bg-stone-100"
+                                                "w-full rounded-2xl text-left transition-all hover:bg-stone-50",
+                                                selectedConversation === conversation.id && "bg-stone-100",
+                                                isMobile ? "p-3" : "p-4"
                                             )}
                                         >
                                             <div className="flex items-center gap-3">
-                                                <Avatar className="h-10 w-10">
+                                                <Avatar className={cn("", isMobile ? "h-8 w-8" : "h-10 w-10")}>
                                                     <AvatarImage src="" />
                                                     <AvatarFallback className="text-xs">
                                                         {conversation.name.charAt(0)}
@@ -371,7 +374,7 @@ const BroadcastCenter = () => {
                                                 </Avatar>
                                                 <div className="flex-1 min-w-0">
                                                     <div className="flex items-center justify-between">
-                                                        <p className="text-sm font-bold text-stone-900 truncate">
+                                                        <p className={cn("font-bold text-stone-900 truncate", isMobile ? "text-sm" : "text-sm")}>
                                                             {conversation.name}
                                                         </p>
                                                         <span className="text-[10px] text-stone-400">
@@ -395,21 +398,21 @@ const BroadcastCenter = () => {
                         </div>
 
                         {/* Chat Area */}
-                        <div className="lg:col-span-2 bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col">
+                        <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col", isMobile ? "lg:col-span-2" : "lg:col-span-2")}>
                             {selectedConversation ? (
                                 <>
-                                    <div className="p-6 border-b border-stone-100">
+                                    <div className={cn("border-b border-stone-100", isMobile ? "p-4" : "p-6")}>
                                         <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">
                                             {getUniqueConversations().find(c => c.id === selectedConversation)?.name || 'Chat'}
                                         </h3>
                                     </div>
-                                    <ScrollArea className="flex-1 p-6">
-                                        <div className="space-y-4">
+                                    <ScrollArea className={cn("flex-1", isMobile ? "max-h-[400px]" : "")}>
+                                        <div className={cn("space-y-4", isMobile ? "p-4" : "p-6")}>
                                             {getConversationMessages(selectedConversation)
                                                 .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                                                 .map((message) => (
                                                 <div key={message.id} className="flex gap-3">
-                                                    <Avatar className="h-8 w-8">
+                                                    <Avatar className={cn("", isMobile ? "h-6 w-6" : "h-8 w-8")}>
                                                         <AvatarImage src={message.sender?.photo_url} />
                                                         <AvatarFallback className="text-xs">
                                                             {message.sender?.name?.charAt(0)}
@@ -417,14 +420,14 @@ const BroadcastCenter = () => {
                                                     </Avatar>
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2 mb-1">
-                                                            <span className="text-sm font-bold text-stone-900">
+                                                            <span className={cn("font-bold text-stone-900", isMobile ? "text-sm" : "text-sm")}>
                                                                 {message.sender?.name}
                                                             </span>
                                                             <span className="text-[10px] text-stone-400">
                                                                 {formatTime(message.created_at)}
                                                             </span>
                                                         </div>
-                                                        <p className="text-sm text-stone-700 bg-stone-50 rounded-2xl px-4 py-2">
+                                                        <p className={cn("text-stone-700 bg-stone-50 rounded-2xl", isMobile ? "text-sm px-3 py-2" : "text-sm px-4 py-2")}>
                                                             {message.content}
                                                         </p>
                                                     </div>
@@ -432,7 +435,7 @@ const BroadcastCenter = () => {
                                             ))}
                                         </div>
                                     </ScrollArea>
-                                    <div className="p-6 border-t border-stone-100">
+                                    <div className={cn("border-t border-stone-100", isMobile ? "p-4" : "p-6")}>
                                         <div className="flex gap-3">
                                             <Input
                                                 value={newMessage}

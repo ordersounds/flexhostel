@@ -13,8 +13,10 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const ApplicationCenter = () => {
+    const isMobile = useIsMobile();
     const [applications, setApplications] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -55,30 +57,23 @@ const ApplicationCenter = () => {
     };
 
     return (
-        <div className="space-y-12 animate-reveal-up">
+        <div className={cn("animate-reveal-up pb-20", isMobile ? "space-y-8" : "space-y-12")}>
             <div className="flex justify-between items-end">
                 <div>
-                    <h2 className="font-display text-5xl font-bold text-stone-900 tracking-tighter">
+                    <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         Admissions Queue<span className="text-primary">.</span>
                     </h2>
-                    <p className="text-stone-500 text-lg mt-2 font-medium">Verify credentials and curate your resident community.</p>
+                    <p className="text-stone-500 mt-2 font-medium" style={{fontSize: isMobile ? '14px' : '18px'}}>Verify credentials and curate your resident community.</p>
                 </div>
             </div>
 
-            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-xl shadow-stone-200/20 overflow-hidden">
-                <table className="w-full text-left">
-                    <thead>
-                        <tr className="bg-stone-50/50 border-b border-stone-100">
-                            <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Applicant</th>
-                            <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Target Residence</th>
-                            <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Status</th>
-                            <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-50">
+            <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-xl shadow-stone-200/20 overflow-hidden", isMobile ? "" : "")}>
+                {isMobile ? (
+                    // Mobile: Card layout
+                    <div className="p-6 space-y-6">
                         {applications.map((app) => (
-                            <tr key={app.id} className="group hover:bg-stone-50/10 transition-colors">
-                                <td className="px-8 py-6">
+                            <div key={app.id} className="bg-stone-50/30 rounded-2xl p-6 border border-stone-100/50">
+                                <div className="flex items-start justify-between mb-4">
                                     <div className="flex items-center gap-4">
                                         <div className="h-12 w-12 rounded-full ring-4 ring-white shadow-sm overflow-hidden bg-stone-100">
                                             {app.applicant?.photo_url ? (
@@ -90,18 +85,10 @@ const ApplicationCenter = () => {
                                             )}
                                         </div>
                                         <div>
-                                            <p className="font-bold text-stone-900 leading-tight">{app.applicant?.name}</p>
-                                            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-0.5">{app.applicant?.email}</p>
+                                            <p className="font-bold text-stone-900 leading-tight text-lg">{app.applicant?.name}</p>
+                                            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-1">{app.applicant?.email}</p>
                                         </div>
                                     </div>
-                                </td>
-                                <td className="px-8 py-6">
-                                    <div className="space-y-1">
-                                        <p className="font-bold text-stone-900 text-sm">Room {app.room?.room_name}</p>
-                                        <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">{app.room?.building?.name}</p>
-                                    </div>
-                                </td>
-                                <td className="px-8 py-6">
                                     <Badge className={cn(
                                         "px-3 py-1 rounded-full font-bold uppercase tracking-widest text-[8px] border-none shadow-sm",
                                         app.status === "approved" ? "bg-emerald-50 text-emerald-600" :
@@ -110,162 +97,348 @@ const ApplicationCenter = () => {
                                     )}>
                                         {app.status}
                                     </Badge>
-                                </td>
-                                <td className="px-8 py-6 text-right">
-                                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                                        <Dialog>
-                                            <DialogTrigger asChild>
-                                                <button className="h-11 w-11 rounded-2xl bg-white border border-stone-100 text-stone-400 flex items-center justify-center hover:bg-stone-50 transition-colors shadow-sm">
-                                                    <Eye className="h-5 w-5" />
-                                                </button>
-                                            </DialogTrigger>
-                                            <DialogContent className="max-w-4xl bg-white backdrop-blur-3xl rounded-[2.5rem] border-stone-100 p-0 overflow-hidden shadow-2xl flex flex-col max-h-[95vh] outline-none sm:max-w-[95vw]">
-                                                <div className="h-48 bg-stone-900 relative flex-shrink-0">
-                                                    <div className="absolute inset-0 opacity-20">
-                                                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.2),transparent_70%)]" />
-                                                    </div>
-                                                    <div className="absolute -bottom-4 left-4 sm:left-12 flex items-end gap-4 sm:gap-6 z-10">
-                                                        <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-[2rem] bg-white p-2 shadow-2xl rotate-3 transition-transform hover:rotate-0 duration-500">
-                                                            <div className="w-full h-full rounded-[1.5rem] bg-stone-100 overflow-hidden relative">
-                                                                <img src={app.applicant?.photo_url || "/placeholder.svg"} className="w-full h-full object-cover" />
-                                                            </div>
+                                </div>
+
+                                <div className="space-y-3 mb-6">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Target Room</span>
+                                        <span className="font-bold text-stone-900">Room {app.room?.room_name}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Building</span>
+                                        <span className="font-bold text-stone-900">{app.room?.building?.name}</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3">
+                                    <Dialog>
+                                        <DialogTrigger asChild>
+                                            <Button variant="outline" className="flex-1 rounded-xl border-stone-200 h-12 font-bold uppercase tracking-widest text-[10px]">
+                                                <Eye className="h-4 w-4 mr-2" /> View Details
+                                            </Button>
+                                        </DialogTrigger>
+                                        <DialogContent className="max-w-sm mx-4 bg-white backdrop-blur-3xl rounded-[2rem] border-stone-100 p-0 overflow-hidden shadow-2xl flex flex-col max-h-[90vh] outline-none">
+                                            <div className="h-32 bg-stone-900 relative flex-shrink-0">
+                                                <div className="absolute inset-0 opacity-20">
+                                                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.2),transparent_70%)]" />
+                                                </div>
+                                                <div className="absolute -bottom-2 left-4 flex items-end gap-3 z-10">
+                                                    <div className="h-16 w-16 rounded-xl bg-white p-1 shadow-xl rotate-3 transition-transform hover:rotate-0 duration-500">
+                                                        <div className="w-full h-full rounded-lg bg-stone-100 overflow-hidden relative">
+                                                            <img src={app.applicant?.photo_url || "/placeholder.svg"} className="w-full h-full object-cover" />
                                                         </div>
-                                                        <div className="mb-2 sm:mb-4">
-                                                            <div className="flex items-center gap-2 sm:gap-3 mb-2">
-                                                                <h4 className="font-display text-2xl sm:text-4xl font-bold text-white tracking-tight">{app.applicant?.name}</h4>
-                                                                <Badge className="bg-white/10 text-white border-none py-1 px-2 sm:px-3 rounded-full uppercase tracking-widest text-[8px] sm:text-[9px] backdrop-blur-md">Applicant</Badge>
+                                                    </div>
+                                                    <div className="mb-1">
+                                                        <h4 className="font-display text-lg font-bold text-white tracking-tight">{app.applicant?.name}</h4>
+                                                        <Badge className="bg-white/10 text-white border-none py-0.5 px-2 rounded-full uppercase tracking-widest text-[7px] backdrop-blur-md">Applicant</Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex-1 overflow-y-auto p-6">
+                                                <div className="space-y-6">
+                                                    {/* Academic Profile */}
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <div className="h-6 w-6 rounded-full bg-stone-100 flex items-center justify-center text-stone-500">
+                                                                <School className="h-3 w-3" />
                                                             </div>
-                                                            <div className="flex items-center gap-4 sm:gap-6 text-white/60">
-                                                                <p className="font-bold uppercase tracking-widest text-[9px] sm:text-[10px] flex items-center gap-2">
-                                                                    <User className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {app.submitted_data?.personal?.gender || "Gender N/A"} • {app.submitted_data?.personal?.dob ? new Date().getFullYear() - new Date(app.submitted_data.personal.dob).getFullYear() : "Age N/A"} YRS
+                                                            <h5 className="text-sm font-bold text-stone-900">Academic Profile</h5>
+                                                        </div>
+
+                                                        <div className="pl-8 space-y-3">
+                                                            <div>
+                                                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">Institution</p>
+                                                                <p className="text-sm font-medium text-stone-900">{app.submitted_data?.school?.institution || "N/A"}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">Faculty / Dept</p>
+                                                                <p className="text-sm font-medium text-stone-900">
+                                                                    {app.submitted_data?.school?.faculty ? `${app.submitted_data.school.faculty} • ` : ""}
+                                                                    {app.submitted_data?.school?.department || "N/A"}
                                                                 </p>
                                                             </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">Matric Number</p>
+                                                                <p className="text-sm font-mono font-medium text-stone-900">{app.submitted_data?.school?.matricNumber || "N/A"}</p>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="flex-1 overflow-y-auto px-12 pt-12 pb-12">
-                                                    <div className="space-y-12">
-                                                        {/* Section 1: Academic Profile - Clean Layout */}
+                                                    {/* Roommate Details */}
+                                                    {app.submitted_data?.roommate?.hasRoommate && (
                                                         <div>
-                                                            <div className="flex items-center gap-3 mb-6">
-                                                                <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-500">
-                                                                    <School className="h-4 w-4" />
+                                                            <div className="flex items-center gap-2 mb-4">
+                                                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                                    <Users className="h-3 w-3" />
                                                                 </div>
-                                                                <h5 className="text-sm font-bold text-stone-900 tracking-tight">Academic Profile</h5>
+                                                                <h5 className="text-sm font-bold text-stone-900">Roommate</h5>
                                                             </div>
 
-                                                            <div className="grid grid-cols-2 gap-8 pl-11">
-                                                                <div>
-                                                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Institution</p>
-                                                                    <p className="text-base font-medium text-stone-900">{app.submitted_data?.school?.institution || "N/A"}</p>
+                                                            <div className="pl-8 p-4 rounded-2xl bg-stone-50 border border-stone-100">
+                                                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">Name</p>
+                                                                <p className="text-base font-bold text-stone-900">{app.submitted_data.roommate.name}</p>
+                                                                <div className="mt-2 space-y-1">
+                                                                    <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Phone</p>
+                                                                    <p className="text-sm font-medium text-stone-900">{app.submitted_data.roommate.phone || "N/A"}</p>
                                                                 </div>
-                                                                <div>
-                                                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Faculty / Dept</p>
-                                                                    <p className="text-base font-medium text-stone-900">
-                                                                        {app.submitted_data?.school?.faculty ? `${app.submitted_data.school.faculty} • ` : ""}
-                                                                        {app.submitted_data?.school?.department || "N/A"}
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Additional Notes */}
+                                                    {app.submitted_data?.additional?.notes && (
+                                                        <div>
+                                                            <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-2">Additional Notes</p>
+                                                            <div className="p-4 rounded-xl bg-stone-50 text-stone-600 text-sm leading-relaxed italic border border-stone-100">
+                                                                "{app.submitted_data.additional.notes}"
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="p-6 border-t border-stone-50 bg-white z-20 flex flex-col gap-3">
+                                                <Button
+                                                    onClick={() => handleAction(app.id, "approved")}
+                                                    className="w-full bg-stone-900 h-12 rounded-xl font-bold uppercase tracking-widest text-xs shadow-xl shadow-stone-900/20"
+                                                >
+                                                    Approve Application
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleAction(app.id, "rejected")}
+                                                    variant="outline"
+                                                    className="w-full border-stone-200 h-12 rounded-xl font-bold uppercase tracking-widest text-xs text-red-500 hover:bg-red-50 hover:border-red-100"
+                                                >
+                                                    Reject Application
+                                                </Button>
+                                            </div>
+                                        </DialogContent>
+                                    </Dialog>
+
+                                    {app.status === "pending" && (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleAction(app.id, "approved")}
+                                                className="h-12 w-12 rounded-xl bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
+                                            >
+                                                <CheckCircle className="h-5 w-5" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction(app.id, "rejected")}
+                                                className="h-12 w-12 rounded-xl bg-white border border-stone-100 text-stone-400 hover:text-red-500 flex items-center justify-center transition-all shadow-sm"
+                                            >
+                                                <XCircle className="h-5 w-5" />
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    // Desktop: Table layout
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="bg-stone-50/50 border-b border-stone-100">
+                                <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Applicant</th>
+                                <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Target Residence</th>
+                                <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Status</th>
+                                <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-50">
+                            {applications.map((app) => (
+                                <tr key={app.id} className="group hover:bg-stone-50/10 transition-colors">
+                                    <td className="px-8 py-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="h-12 w-12 rounded-full ring-4 ring-white shadow-sm overflow-hidden bg-stone-100">
+                                                {app.applicant?.photo_url ? (
+                                                    <img src={app.applicant.photo_url} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center font-bold text-sm text-stone-400">
+                                                        {app.applicant?.name?.charAt(0)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div>
+                                                <p className="font-bold text-stone-900 leading-tight">{app.applicant?.name}</p>
+                                                <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest mt-0.5">{app.applicant?.email}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-6">
+                                        <div className="space-y-1">
+                                            <p className="font-bold text-stone-900 text-sm">Room {app.room?.room_name}</p>
+                                            <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">{app.room?.building?.name}</p>
+                                        </div>
+                                    </td>
+                                    <td className="px-8 py-6">
+                                        <Badge className={cn(
+                                            "px-3 py-1 rounded-full font-bold uppercase tracking-widest text-[8px] border-none shadow-sm",
+                                            app.status === "approved" ? "bg-emerald-50 text-emerald-600" :
+                                                app.status === "rejected" ? "bg-red-50 text-red-600" :
+                                                    "bg-stone-100 text-stone-400"
+                                        )}>
+                                            {app.status}
+                                        </Badge>
+                                    </td>
+                                    <td className="px-8 py-6 text-right">
+                                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                                            <Dialog>
+                                                <DialogTrigger asChild>
+                                                    <button className="h-11 w-11 rounded-2xl bg-white border border-stone-100 text-stone-400 flex items-center justify-center hover:bg-stone-50 transition-colors shadow-sm">
+                                                        <Eye className="h-5 w-5" />
+                                                    </button>
+                                                </DialogTrigger>
+                                                <DialogContent className="max-w-4xl bg-white backdrop-blur-3xl rounded-[2.5rem] border-stone-100 p-0 overflow-hidden shadow-2xl flex flex-col max-h-[95vh] outline-none sm:max-w-[95vw]">
+                                                    <div className="h-48 bg-stone-900 relative flex-shrink-0">
+                                                        <div className="absolute inset-0 opacity-20">
+                                                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.2),transparent_70%)]" />
+                                                        </div>
+                                                        <div className="absolute -bottom-4 left-4 sm:left-12 flex items-end gap-4 sm:gap-6 z-10">
+                                                            <div className="h-32 w-32 sm:h-40 sm:w-40 rounded-[2rem] bg-white p-2 shadow-2xl rotate-3 transition-transform hover:rotate-0 duration-500">
+                                                                <div className="w-full h-full rounded-[1.5rem] bg-stone-100 overflow-hidden relative">
+                                                                    <img src={app.applicant?.photo_url || "/placeholder.svg"} className="w-full h-full object-cover" />
+                                                                </div>
+                                                            </div>
+                                                            <div className="mb-2 sm:mb-4">
+                                                                <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                                                                    <h4 className="font-display text-2xl sm:text-4xl font-bold text-white tracking-tight">{app.applicant?.name}</h4>
+                                                                    <Badge className="bg-white/10 text-white border-none py-1 px-2 sm:px-3 rounded-full uppercase tracking-widest text-[8px] sm:text-[9px] backdrop-blur-md">Applicant</Badge>
+                                                                </div>
+                                                                <div className="flex items-center gap-4 sm:gap-6 text-white/60">
+                                                                    <p className="font-bold uppercase tracking-widest text-[9px] sm:text-[10px] flex items-center gap-2">
+                                                                        <User className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> {app.submitted_data?.personal?.gender || "Gender N/A"} • {app.submitted_data?.personal?.dob ? new Date().getFullYear() - new Date(app.submitted_data.personal.dob).getFullYear() : "Age N/A"} YRS
                                                                     </p>
                                                                 </div>
-                                                                <div>
-                                                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Matric Number</p>
-                                                                    <p className="text-base font-mono font-medium text-stone-900">{app.submitted_data?.school?.matricNumber || "N/A"}</p>
-                                                                </div>
                                                             </div>
                                                         </div>
+                                                    </div>
 
-                                                        {/* Section 2: Roommate Configuration - Conditional */}
-                                                        {app.submitted_data?.roommate?.hasRoommate ? (
+                                                    <div className="flex-1 overflow-y-auto px-12 pt-12 pb-12">
+                                                        <div className="space-y-12">
+                                                            {/* Section 1: Academic Profile - Clean Layout */}
                                                             <div>
                                                                 <div className="flex items-center gap-3 mb-6">
-                                                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                                        <Users className="h-4 w-4" />
+                                                                    <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-500">
+                                                                        <School className="h-4 w-4" />
                                                                     </div>
-                                                                    <h5 className="text-sm font-bold text-stone-900 tracking-tight">Co-Habitation Details</h5>
+                                                                    <h5 className="text-sm font-bold text-stone-900 tracking-tight">Academic Profile</h5>
                                                                 </div>
 
-                                                                <div className="pl-11 p-6 rounded-3xl bg-stone-50 border border-stone-100 grid grid-cols-2 gap-6 relative overflow-hidden">
-                                                                    <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
-                                                                        <Users className="h-24 w-24" />
-                                                                    </div>
-
-                                                                    <div className="col-span-2">
-                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Roommate Name</p>
-                                                                        <p className="text-lg font-bold text-stone-900">{app.submitted_data.roommate.name}</p>
+                                                                <div className="grid grid-cols-2 gap-8 pl-11">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Institution</p>
+                                                                        <p className="text-base font-medium text-stone-900">{app.submitted_data?.school?.institution || "N/A"}</p>
                                                                     </div>
                                                                     <div>
-                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Contact Phone</p>
-                                                                        <p className="text-sm font-medium text-stone-900">{app.submitted_data.roommate.phone || "N/A"}</p>
+                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Faculty / Dept</p>
+                                                                        <p className="text-base font-medium text-stone-900">
+                                                                            {app.submitted_data?.school?.faculty ? `${app.submitted_data.school.faculty} • ` : ""}
+                                                                            {app.submitted_data?.school?.department || "N/A"}
+                                                                        </p>
                                                                     </div>
                                                                     <div>
-                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Email Address</p>
-                                                                        <p className="text-sm font-medium text-stone-900">{app.submitted_data.roommate.email || "N/A"}</p>
+                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Matric Number</p>
+                                                                        <p className="text-base font-mono font-medium text-stone-900">{app.submitted_data?.school?.matricNumber || "N/A"}</p>
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                        ) : (
-                                                            <div>
-                                                                <div className="flex items-center gap-3 mb-4 opacity-50">
-                                                                    <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400">
-                                                                        <User className="h-4 w-4" />
-                                                                    </div>
-                                                                    <h5 className="text-sm font-bold text-stone-900 tracking-tight">Co-Habitation Details</h5>
-                                                                </div>
-                                                                <p className="pl-11 text-sm text-stone-400 italic">Applicant has requested sole occupancy of the suite.</p>
-                                                            </div>
-                                                        )}
 
-                                                        {/* Section 3: Additional Notes */}
-                                                        {app.submitted_data?.additional?.notes && (
-                                                            <div>
-                                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">Additional Notes / Requests</p>
-                                                                <div className="p-6 rounded-2xl bg-stone-50 text-stone-600 text-sm leading-relaxed italic border border-stone-100">
-                                                                    "{app.submitted_data.additional.notes}"
+                                                            {/* Section 2: Roommate Configuration - Conditional */}
+                                                            {app.submitted_data?.roommate?.hasRoommate ? (
+                                                                <div>
+                                                                    <div className="flex items-center gap-3 mb-6">
+                                                                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                                            <Users className="h-4 w-4" />
+                                                                        </div>
+                                                                        <h5 className="text-sm font-bold text-stone-900 tracking-tight">Co-Habitation Details</h5>
+                                                                    </div>
+
+                                                                    <div className="pl-11 p-6 rounded-3xl bg-stone-50 border border-stone-100 grid grid-cols-2 gap-6 relative overflow-hidden">
+                                                                        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                                                                            <Users className="h-24 w-24" />
+                                                                        </div>
+
+                                                                        <div className="col-span-2">
+                                                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Roommate Name</p>
+                                                                            <p className="text-lg font-bold text-stone-900">{app.submitted_data.roommate.name}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Contact Phone</p>
+                                                                            <p className="text-sm font-medium text-stone-900">{app.submitted_data.roommate.phone || "N/A"}</p>
+                                                                        </div>
+                                                                        <div>
+                                                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Email Address</p>
+                                                                            <p className="text-sm font-medium text-stone-900">{app.submitted_data.roommate.email || "N/A"}</p>
+                                                                        </div>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        )}
+                                                            ) : (
+                                                                <div>
+                                                                    <div className="flex items-center gap-3 mb-4 opacity-50">
+                                                                        <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400">
+                                                                            <User className="h-4 w-4" />
+                                                                        </div>
+                                                                        <h5 className="text-sm font-bold text-stone-900 tracking-tight">Co-Habitation Details</h5>
+                                                                    </div>
+                                                                    <p className="pl-11 text-sm text-stone-400 italic">Applicant has requested sole occupancy of the suite.</p>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Section 3: Additional Notes */}
+                                                            {app.submitted_data?.additional?.notes && (
+                                                                <div>
+                                                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">Additional Notes / Requests</p>
+                                                                    <div className="p-6 rounded-2xl bg-stone-50 text-stone-600 text-sm leading-relaxed italic border border-stone-100">
+                                                                        "{app.submitted_data.additional.notes}"
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="p-8 border-t border-stone-50 bg-white z-20 flex gap-4">
-                                                    <Button
+                                                    <div className="p-8 border-t border-stone-50 bg-white z-20 flex gap-4">
+                                                        <Button
+                                                            onClick={() => handleAction(app.id, "approved")}
+                                                            className="flex-1 bg-stone-900 h-16 rounded-2xl font-bold uppercase tracking-widest text-xs shadow-xl shadow-stone-900/20 hover:scale-[1.01] transition-all"
+                                                        >
+                                                            Confirm & Create Tenancy
+                                                        </Button>
+                                                        <Button
+                                                            onClick={() => handleAction(app.id, "rejected")}
+                                                            variant="outline"
+                                                            className="flex-1 border-stone-200 h-16 rounded-2xl font-bold uppercase tracking-widest text-xs text-red-500 hover:bg-red-50 hover:border-red-100"
+                                                        >
+                                                            Reject Application
+                                                        </Button>
+                                                    </div>
+                                                </DialogContent>
+                                            </Dialog>
+                                            {app.status === "pending" && (
+                                                <>
+                                                    <button
                                                         onClick={() => handleAction(app.id, "approved")}
-                                                        className="flex-1 bg-stone-900 h-16 rounded-2xl font-bold uppercase tracking-widest text-xs shadow-xl shadow-stone-900/20 hover:scale-[1.01] transition-all"
+                                                        className="h-11 w-11 rounded-2xl bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
                                                     >
-                                                        Confirm & Create Tenancy
-                                                    </Button>
-                                                    <Button
+                                                        <CheckCircle className="h-5 w-5" />
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleAction(app.id, "rejected")}
-                                                        variant="outline"
-                                                        className="flex-1 border-stone-200 h-16 rounded-2xl font-bold uppercase tracking-widest text-xs text-red-500 hover:bg-red-50 hover:border-red-100"
+                                                        className="h-11 w-11 rounded-2xl bg-white border border-stone-100 text-stone-400 hover:text-red-500 flex items-center justify-center transition-all shadow-sm"
                                                     >
-                                                        Reject Application
-                                                    </Button>
-                                                </div>
-                                            </DialogContent>
-                                        </Dialog>
-                                        {app.status === "pending" && (
-                                            <>
-                                                <button
-                                                    onClick={() => handleAction(app.id, "approved")}
-                                                    className="h-11 w-11 rounded-2xl bg-emerald-500 text-white flex items-center justify-center hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20"
-                                                >
-                                                    <CheckCircle className="h-5 w-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => handleAction(app.id, "rejected")}
-                                                    className="h-11 w-11 rounded-2xl bg-white border border-stone-100 text-stone-400 hover:text-red-500 flex items-center justify-center transition-all shadow-sm"
-                                                >
-                                                    <XCircle className="h-5 w-5" />
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                                                        <XCircle className="h-5 w-5" />
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
             </div>
         </div>
     );

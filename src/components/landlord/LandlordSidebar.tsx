@@ -15,12 +15,17 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface LandlordSidebarProps {
     onLogout?: () => void;
+    isOpen?: boolean;
+    onClose?: () => void;
 }
 
-const LandlordSidebar = ({ onLogout }: LandlordSidebarProps) => {
+const LandlordSidebar = ({ onLogout, isOpen, onClose }: LandlordSidebarProps) => {
+    const isMobile = useIsMobile();
     const location = useLocation();
     const [pendingCount, setPendingCount] = useState(0);
 
@@ -62,8 +67,8 @@ const LandlordSidebar = ({ onLogout }: LandlordSidebarProps) => {
         { label: "Broadcasts", icon: Megaphone, path: "/landlord/broadcasts" },
     ];
 
-    return (
-        <aside className="w-80 h-screen bg-white border-r border-stone-100 flex flex-col fixed left-0 top-0 z-50">
+    const SidebarContent = () => (
+        <>
             <div className="p-8">
                 <div className="flex items-center gap-3 mb-10">
                     <div className="h-10 w-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/20">
@@ -81,6 +86,7 @@ const LandlordSidebar = ({ onLogout }: LandlordSidebarProps) => {
                             <Link
                                 key={item.path}
                                 to={item.path}
+                                onClick={isMobile ? onClose : undefined}
                                 className={cn(
                                     "group flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all duration-300",
                                     isActive
@@ -108,19 +114,41 @@ const LandlordSidebar = ({ onLogout }: LandlordSidebarProps) => {
             <div className="mt-auto p-8 border-t border-stone-50">
                 <Link
                     to="/settings"
+                    onClick={isMobile ? onClose : undefined}
                     className="flex items-center gap-3 px-4 py-3 text-stone-400 hover:text-stone-900 transition-colors mb-4"
                 >
                     <Settings className="h-5 w-5" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">Settings</span>
                 </Link>
                 <button
-                    onClick={onLogout}
+                    onClick={() => {
+                        if (isMobile && onClose) onClose();
+                        onLogout?.();
+                    }}
                     className="w-full flex items-center gap-3 px-4 py-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-colors group"
                 >
                     <LogOut className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">Logout</span>
                 </button>
             </div>
+        </>
+    );
+
+    if (isMobile) {
+        return (
+            <Sheet open={isOpen} onOpenChange={onClose}>
+                <SheetContent side="left" className="w-80 p-0 bg-white border-r border-stone-100">
+                    <div className="h-full flex flex-col">
+                        <SidebarContent />
+                    </div>
+                </SheetContent>
+            </Sheet>
+        );
+    }
+
+    return (
+        <aside className="w-80 h-screen bg-white border-r border-stone-100 flex flex-col fixed left-0 top-0 z-50">
+            <SidebarContent />
         </aside>
     );
 };

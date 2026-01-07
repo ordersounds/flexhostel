@@ -10,8 +10,10 @@ import AddRoomDialog from "./AddRoomDialog";
 import RoomControlCenter from "./RoomControlCenter";
 import ManageChargesDialog from "./ManageChargesDialog";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const PropertyPortfolio = () => {
+    const isMobile = useIsMobile();
     const [buildings, setBuildings] = useState<any[]>([]);
     const [selectedBuilding, setSelectedBuilding] = useState<any>(null);
     const [rooms, setRooms] = useState<any[]>([]);
@@ -83,7 +85,7 @@ const PropertyPortfolio = () => {
 
     if (selectedBuilding) {
         return (
-            <div className="space-y-12 animate-reveal-up pb-20">
+            <div className={cn("animate-reveal-up pb-20", isMobile ? "space-y-8" : "space-y-12")}>
                 {/* Building Context Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
                     <div className="space-y-4">
@@ -94,10 +96,10 @@ const PropertyPortfolio = () => {
                             <ArrowLeft className="h-4 w-4" /> Back to Portfolio
                         </button>
                         <div>
-                            <h2 className="font-display text-4xl font-bold text-stone-900 tracking-tight">
+                            <h2 className={cn("font-display font-bold text-stone-900 tracking-tight", isMobile ? "text-2xl" : "text-4xl")}>
                                 {selectedBuilding.name}<span className="text-primary">.</span>
                             </h2>
-                            <p className="text-stone-500 font-medium flex items-center gap-2 mt-1">
+                            <p className="text-stone-500 font-medium flex items-center gap-2 mt-1" style={{fontSize: isMobile ? '14px' : '16px'}}>
                                 <MapPin className="h-4 w-4" /> {selectedBuilding.address}
                             </p>
                         </div>
@@ -107,7 +109,7 @@ const PropertyPortfolio = () => {
                             buildingId={selectedBuilding.id}
                             buildingName={selectedBuilding.name}
                             trigger={
-                                <Button variant="outline" className="flex-1 md:flex-none rounded-2xl border-stone-200 h-16 px-8 font-bold uppercase tracking-widest text-[10px]">
+                                <Button variant="outline" className={cn("rounded-2xl border-stone-200 font-bold uppercase tracking-widest text-[10px]", isMobile ? "flex-1 h-12 px-6" : "flex-1 md:flex-none h-16 px-8")}>
                                     Manage Charges
                                 </Button>
                             }
@@ -116,8 +118,8 @@ const PropertyPortfolio = () => {
                             preselectedBuildingId={selectedBuilding.id}
                             onSuccess={() => fetchRooms(selectedBuilding.id)}
                             trigger={
-                                <Button className="flex-1 md:flex-none rounded-2xl bg-stone-900 text-white h-16 px-8 font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20">
-                                    <Plus className="h-4 w-4 mr-2" /> Add Room
+                                <Button className={cn("rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "flex-1 h-12 px-6" : "flex-1 md:flex-none h-16 px-8")}>
+                                    <Plus className={cn("mr-2", isMobile ? "h-3 w-3" : "h-4 w-4")} /> Add Room
                                 </Button>
                             }
                         />
@@ -125,7 +127,7 @@ const PropertyPortfolio = () => {
                 </div>
 
                 {/* Rooms Grid */}
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className={cn("grid md:grid-cols-2 lg:grid-cols-3", isMobile ? "gap-6" : "gap-8")}>
                     {roomsLoading ? (
                         [1, 2, 3].map(i => <div key={i} className="h-64 bg-stone-100 rounded-[2.5rem] animate-pulse" />)
                     ) : rooms.map((room) => {
@@ -133,8 +135,8 @@ const PropertyPortfolio = () => {
                         const tenantName = activeTenancy?.profiles?.name;
 
                         return (
-                            <div key={room.id} className="group bg-white rounded-[2.5rem] border border-stone-100 p-8 shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 relative overflow-hidden">
-                                <div className="absolute top-0 right-0 p-8">
+                            <div key={room.id} className={cn("group bg-white rounded-[2.5rem] border border-stone-100 shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 relative overflow-hidden", isMobile ? "p-6" : "p-8")}>
+                                <div className={cn("absolute top-0 right-0", isMobile ? "p-6" : "p-8")}>
                                     <Badge className={cn(
                                         "rounded-full px-3 py-1 font-bold uppercase tracking-widest text-[8px] border-none shadow-sm",
                                         room.status === "available" ? "bg-emerald-50 text-emerald-600" :
@@ -146,11 +148,11 @@ const PropertyPortfolio = () => {
 
                                 <div className="space-y-6">
                                     <div className="flex items-center gap-4">
-                                        <div className="h-14 w-14 rounded-2xl bg-stone-50 text-stone-900 flex items-center justify-center font-bold text-xl border border-stone-100 group-hover:bg-stone-900 group-hover:text-white transition-colors duration-500">
+                                        <div className={cn("rounded-2xl bg-stone-50 text-stone-900 flex items-center justify-center font-bold text-xl border border-stone-100 group-hover:bg-stone-900 group-hover:text-white transition-colors duration-500", isMobile ? "h-12 w-12" : "h-14 w-14")}>
                                             {room.room_name.charAt(0)}
                                         </div>
                                         <div>
-                                            <h4 className="font-display text-2xl font-bold text-stone-900 tracking-tight leading-none">{room.room_name}</h4>
+                                            <h4 className={cn("font-display font-bold text-stone-900 tracking-tight leading-none", isMobile ? "text-lg" : "text-2xl")}>{room.room_name}</h4>
                                             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-2 flex items-center gap-1">
                                                 <CreditCard className="h-3 w-3" /> ₦{room.price.toLocaleString()}/year
                                             </p>
@@ -173,12 +175,12 @@ const PropertyPortfolio = () => {
                                             roomId={room.id}
                                             onSuccess={() => fetchRooms(selectedBuilding.id)}
                                             trigger={
-                                                <Button className="flex-1 rounded-xl bg-stone-900 h-14 font-bold uppercase tracking-widest text-[10px]">
+                                                <Button className={cn("flex-1 rounded-xl bg-stone-900 font-bold uppercase tracking-widest text-[10px]", isMobile ? "h-12" : "h-14")}>
                                                     Room Control
                                                 </Button>
                                             }
                                         />
-                                        <Button variant="outline" className="h-14 w-14 rounded-xl border-stone-200 p-0 hover:bg-stone-50">
+                                        <Button variant="outline" className={cn("rounded-xl border-stone-200 p-0 hover:bg-stone-50", isMobile ? "h-12 w-12" : "h-14 w-14")}>
                                             <MoreHorizontal className="h-5 w-5 text-stone-400" />
                                         </Button>
                                     </div>
@@ -191,11 +193,11 @@ const PropertyPortfolio = () => {
                         preselectedBuildingId={selectedBuilding.id}
                         onSuccess={() => fetchRooms(selectedBuilding.id)}
                         trigger={
-                            <button className="h-full min-h-[300px] border-2 border-dashed border-stone-200 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-stone-50/50 transition-all group group-hover:shadow-2xl">
-                                <div className="h-14 w-14 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                                    <Plus className="h-7 w-7" />
+                            <button className={cn("h-full min-h-[300px] border-2 border-dashed border-stone-200 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-stone-50/50 transition-all group group-hover:shadow-2xl", isMobile ? "min-h-[250px]" : "min-h-[300px]")}>
+                                <div className={cn("rounded-full bg-stone-100 flex items-center justify-center text-stone-400 group-hover:bg-primary group-hover:text-white transition-all duration-300", isMobile ? "h-12 w-12" : "h-14 w-14")}>
+                                    <Plus className={cn("", isMobile ? "h-6 w-6" : "h-7 w-7")} />
                                 </div>
-                                <p className="font-display text-xl font-bold text-stone-400 group-hover:text-stone-900 tracking-tight transition-colors">Add Unit</p>
+                                <p className={cn("font-display font-bold text-stone-400 group-hover:text-stone-900 tracking-tight transition-colors", isMobile ? "text-lg" : "text-xl")}>Add Unit</p>
                             </button>
                         }
                     />
@@ -205,18 +207,18 @@ const PropertyPortfolio = () => {
     }
 
     return (
-        <div className="space-y-12 animate-reveal-up">
+        <div className={cn("animate-reveal-up", isMobile ? "space-y-8" : "space-y-12")}>
             {/* Header */}
-            <div className="flex justify-between items-end">
+            <div className={cn("flex items-end", isMobile ? "flex-col gap-4" : "justify-between")}>
                 <div>
-                    <h2 className="font-display text-5xl font-bold text-stone-900 tracking-tighter">
+                    <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         Property Portfolio<span className="text-primary">.</span>
                     </h2>
-                    <p className="text-stone-500 text-lg mt-1 font-medium">Manage your buildings and rental units.</p>
+                    <p className="text-stone-500 mt-1 font-medium" style={{fontSize: isMobile ? '14px' : '18px'}}>Manage your buildings and rental units.</p>
                 </div>
                 <AddBuildingDialog onSuccess={() => fetchBuildings()} trigger={
-                    <Button className="rounded-2xl bg-stone-900 text-white h-16 px-8 font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20">
-                        <Plus className="h-4 w-4 mr-2" /> Add Building
+                    <Button className={cn("rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "h-12 px-6 w-full" : "h-16 px-8")}>
+                        <Plus className={cn("mr-2", isMobile ? "h-3 w-3" : "h-4 w-4")} /> Add Building
                     </Button>
                 } />
             </div>
@@ -227,7 +229,7 @@ const PropertyPortfolio = () => {
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-300" />
                     <Input
                         placeholder="Search buildings or locations..."
-                        className="pl-10 h-14 rounded-2xl border-stone-100"
+                        className={cn("pl-10 rounded-2xl border-stone-100", isMobile ? "h-12" : "h-14")}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -236,13 +238,13 @@ const PropertyPortfolio = () => {
 
             {
                 loading ? (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className={cn("grid md:grid-cols-2 lg:grid-cols-3", isMobile ? "gap-6" : "gap-8")}>
                         {[1, 2, 3].map(i => (
-                            <div key={i} className="h-80 bg-stone-100 rounded-[2.5rem] animate-pulse" />
+                            <div key={i} className={cn("bg-stone-100 rounded-[2.5rem] animate-pulse", isMobile ? "h-72" : "h-80")} />
                         ))}
                     </div>
                 ) : (
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <div className={cn("grid md:grid-cols-2 lg:grid-cols-3", isMobile ? "gap-6" : "gap-8")}>
                         {filteredBuildings.map((building) => (
                             <div
                                 key={building.id}
@@ -250,30 +252,30 @@ const PropertyPortfolio = () => {
                                 className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 cursor-pointer"
                             >
                                 {/* Cover Image */}
-                                <div className="h-52 relative overflow-hidden">
+                                <div className={cn("relative overflow-hidden", isMobile ? "h-40" : "h-52")}>
                                     <img
                                         src={building.cover_image_url || "/placeholder.svg"}
                                         alt={building.name}
                                         className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                     />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                                    <Badge className="absolute top-6 left-6 bg-white/20 backdrop-blur-md text-white border-none font-bold uppercase tracking-widest text-[9px] px-3 py-1.5 rounded-full">
+                                    <Badge className={cn("absolute bg-white/20 backdrop-blur-md text-white border-none font-bold uppercase tracking-widest text-[9px] px-3 py-1.5 rounded-full", isMobile ? "top-4 left-4" : "top-6 left-6")}>
                                         {building.rooms?.length || 0} Units
                                     </Badge>
-                                    <div className="absolute bottom-6 left-6 right-6">
-                                        <h3 className="font-display text-2xl font-bold text-white tracking-tight">{building.name}</h3>
+                                    <div className={cn("absolute", isMobile ? "bottom-4 left-4 right-4" : "bottom-6 left-6 right-6")}>
+                                        <h3 className={cn("font-display font-bold text-white tracking-tight", isMobile ? "text-lg" : "text-2xl")}>{building.name}</h3>
                                         <div className="flex items-center gap-1.5 text-white/70 text-[10px] font-bold uppercase tracking-widest mt-1">
-                                            <MapPin className="h-3 w-3" /> {building.address}
+                                            <MapPin className={cn("", isMobile ? "h-2.5 w-2.5" : "h-3 w-3")} /> {building.address}
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Quick Actions */}
-                                <div className="p-8 space-y-6">
+                                <div className={cn("space-y-6", isMobile ? "p-6" : "p-8")}>
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="p-4 rounded-2xl bg-stone-50 border border-stone-100">
                                             <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1 text-center">Occupancy</p>
-                                            <p className="text-xl font-bold text-stone-900 text-center tracking-tight">
+                                            <p className={cn("font-bold text-stone-900 text-center tracking-tight", isMobile ? "text-lg" : "text-xl")}>
                                                 {building.rooms?.length > 0
                                                     ? Math.round((building.rooms.filter((r: any) => r.status === "occupied").length / building.rooms.length) * 100)
                                                     : 0}%
@@ -281,15 +283,15 @@ const PropertyPortfolio = () => {
                                         </div>
                                         <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-100">
                                             <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1 text-center">Status</p>
-                                            <p className="text-xl font-bold text-emerald-600 text-center tracking-tight uppercase tracking-wider text-xs">{building.status}</p>
+                                            <p className={cn("font-bold text-emerald-600 text-center tracking-tight uppercase tracking-wider text-xs", isMobile ? "text-xs" : "text-xs")}>{building.status}</p>
                                         </div>
                                     </div>
 
                                     <div className="pt-2 flex gap-3">
-                                        <Button className="flex-1 rounded-xl bg-stone-900 h-14 font-bold uppercase tracking-widest text-[10px]">
+                                        <Button className={cn("flex-1 rounded-xl bg-stone-900 font-bold uppercase tracking-widest text-[10px]", isMobile ? "h-12" : "h-14")}>
                                             Explore Assets
                                         </Button>
-                                        <Button variant="outline" className="h-14 w-14 rounded-xl border-stone-200 p-0 hover:bg-stone-50 transition-colors">
+                                        <Button variant="outline" className={cn("rounded-xl border-stone-200 p-0 hover:bg-stone-50 transition-colors", isMobile ? "h-12 w-12" : "h-14 w-14")}>
                                             <ChevronRight className="h-5 w-5 text-stone-400" />
                                         </Button>
                                     </div>
@@ -299,11 +301,11 @@ const PropertyPortfolio = () => {
 
                         {/* New Building Ghost Card */}
                         <AddBuildingDialog onSuccess={() => fetchBuildings()} trigger={
-                            <button className="h-full min-h-[400px] border-2 border-dashed border-stone-200 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-stone-50/50 transition-all group group-hover:shadow-2xl">
-                                <div className="h-16 w-16 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                                    <Plus className="h-8 w-8" />
+                            <button className={cn("h-full border-2 border-dashed border-stone-200 rounded-[2.5rem] flex flex-col items-center justify-center gap-4 hover:border-primary hover:bg-stone-50/50 transition-all group group-hover:shadow-2xl", isMobile ? "min-h-[300px]" : "min-h-[400px]")}>
+                                <div className={cn("rounded-full bg-stone-100 flex items-center justify-center text-stone-400 group-hover:bg-primary group-hover:text-white transition-all duration-300", isMobile ? "h-14 w-14" : "h-16 w-16")}>
+                                    <Plus className={cn("", isMobile ? "h-7 w-7" : "h-8 w-8")} />
                                 </div>
-                                <p className="font-display text-xl font-bold text-stone-400 group-hover:text-stone-900 tracking-tight transition-colors">Expand Portfolio</p>
+                                <p className={cn("font-display font-bold text-stone-400 group-hover:text-stone-900 tracking-tight transition-colors", isMobile ? "text-lg" : "text-xl")}>Expand Portfolio</p>
                                 <p className="text-[10px] font-bold text-stone-300 uppercase tracking-[0.2em]">Add new building</p>
                             </button>
                         } />

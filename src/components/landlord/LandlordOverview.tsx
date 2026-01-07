@@ -5,10 +5,12 @@ import StatCard from "./StatCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 
 const LandlordOverview = () => {
     const navigate = useNavigate();
+    const isMobile = useIsMobile();
     const [loading, setLoading] = useState(true);
     const [businessPulse, setBusinessPulse] = useState({
         // Money metrics
@@ -149,45 +151,45 @@ const LandlordOverview = () => {
         : 0;
 
     return (
-        <div className="space-y-8 animate-reveal-up">
+        <div className={cn("animate-reveal-up", isMobile ? "space-y-6" : "space-y-8")}>
             {/* Header */}
-            <div className="flex justify-between items-end">
+            <div className={cn("flex items-end", isMobile ? "flex-col gap-4" : "justify-between")}>
                 <div>
-                    <h2 className="font-display text-5xl font-bold text-stone-900 tracking-tighter">
+                    <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         Portfolio Overview<span className="text-primary">.</span>
                     </h2>
-                    <p className="text-stone-500 text-lg mt-1 font-medium">Your property empire at a glance.</p>
+                    <p className="text-stone-500 mt-1 font-medium" style={{fontSize: isMobile ? '14px' : '18px'}}>Your property empire at a glance.</p>
                 </div>
                 <Button
                     onClick={() => navigate("/landlord/broadcasts")}
-                    className="rounded-2xl bg-stone-900 text-white h-16 px-8 font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20"
+                    className={cn("rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "h-12 px-6 w-full" : "h-16 px-8")}
                 >
-                    <Megaphone className="h-4 w-4 mr-2" />
+                    <Megaphone className={cn("mr-2", isMobile ? "h-3 w-3" : "h-4 w-4")} />
                     Quick Announcement
                 </Button>
             </div>
 
             {/* Money First - Priority Dashboard */}
-            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 p-8">
-                <div className="flex items-center justify-between mb-8">
+            <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500", isMobile ? "p-6" : "p-8")}>
+                <div className={cn("flex items-center justify-between", isMobile ? "mb-6" : "mb-8")}>
                     <div>
                         <h3 className="text-lg font-bold text-stone-900 mb-2 uppercase tracking-widest text-sm">Annual Revenue Progress</h3>
                         <div className="flex items-baseline gap-4">
-                            <span className="font-display text-4xl font-bold text-stone-900">
+                            <span className={cn("font-display font-bold text-stone-900", isMobile ? "text-3xl" : "text-4xl")}>
                                 ₦{(businessPulse.annualRevenueCollected / 1000000).toFixed(1)}M
                             </span>
                             <span className="text-sm font-bold text-stone-500">collected</span>
                         </div>
                         <p className="text-stone-600 text-sm font-medium mt-1">{annualProgress}% of annual target</p>
                     </div>
-                    <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                        <DollarSign className="h-8 w-8 text-primary" />
+                    <div className={cn("rounded-2xl bg-primary/10 flex items-center justify-center", isMobile ? "h-12 w-12" : "h-16 w-16")}>
+                        <DollarSign className={cn("text-primary", isMobile ? "h-6 w-6" : "h-8 w-8")} />
                     </div>
                 </div>
 
                 {businessPulse.overdueAmount > 0 && (
-                    <div className="bg-stone-50 rounded-2xl p-6 border border-stone-200">
-                        <div className="flex items-center justify-between">
+                    <div className={cn("bg-stone-50 rounded-2xl border border-stone-200", isMobile ? "p-4" : "p-6")}>
+                        <div className={cn("flex items-center justify-between", isMobile ? "flex-col gap-4" : "")}>
                             <div className="flex items-center gap-3">
                                 <AlertTriangle className="h-5 w-5 text-stone-600" />
                                 <div>
@@ -202,7 +204,7 @@ const LandlordOverview = () => {
                             <Button
                                 size="sm"
                                 onClick={() => navigate("/landlord/financials")}
-                                className="bg-stone-900 hover:bg-stone-800 text-white rounded-xl h-10 px-6 text-[10px] font-bold uppercase tracking-widest"
+                                className={cn("bg-stone-900 hover:bg-stone-800 text-white rounded-xl text-[10px] font-bold uppercase tracking-widest", isMobile ? "h-10 px-6 w-full" : "h-10 px-6")}
                             >
                                 Send Reminders
                             </Button>
@@ -212,9 +214,9 @@ const LandlordOverview = () => {
             </div>
 
             {/* Today's Fire Drill - Urgent Actions */}
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className={cn("grid md:grid-cols-3", isMobile ? "gap-6" : "gap-8")}>
                 <div className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 cursor-pointer">
-                    <div className="p-8 space-y-6">
+                    <div className={cn("space-y-6", isMobile ? "p-6" : "p-8")}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="h-12 w-12 rounded-2xl bg-stone-100 flex items-center justify-center">
@@ -231,7 +233,7 @@ const LandlordOverview = () => {
                         {businessPulse.pendingApps > 0 ? (
                             <Button
                                 onClick={() => navigate("/landlord/applications")}
-                                className="w-full rounded-2xl bg-stone-900 text-white h-14 font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20"
+                                className={cn("w-full rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "h-12" : "h-14")}
                             >
                                 Review Applications
                             </Button>
@@ -245,7 +247,7 @@ const LandlordOverview = () => {
                 </div>
 
                 <div className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 cursor-pointer">
-                    <div className="p-8 space-y-6">
+                    <div className={cn("space-y-6", isMobile ? "p-6" : "p-8")}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="h-12 w-12 rounded-2xl bg-stone-100 flex items-center justify-center">
@@ -262,7 +264,7 @@ const LandlordOverview = () => {
                         {businessPulse.unreadMessages > 0 ? (
                             <Button
                                 onClick={() => navigate("/landlord/broadcasts")}
-                                className="w-full rounded-2xl bg-stone-900 text-white h-14 font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20"
+                                className={cn("w-full rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "h-12" : "h-14")}
                             >
                                 Check Messages
                             </Button>
@@ -276,7 +278,7 @@ const LandlordOverview = () => {
                 </div>
 
                 <div className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 cursor-pointer">
-                    <div className="p-8 space-y-6">
+                    <div className={cn("space-y-6", isMobile ? "p-6" : "p-8")}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="h-12 w-12 rounded-2xl bg-stone-100 flex items-center justify-center">
@@ -293,7 +295,7 @@ const LandlordOverview = () => {
                         {businessPulse.vacantRooms > 0 ? (
                             <Button
                                 onClick={() => navigate("/landlord/properties")}
-                                className="w-full rounded-2xl bg-stone-900 text-white h-14 font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20"
+                                className={cn("w-full rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "h-12" : "h-14")}
                             >
                                 List Properties
                             </Button>
@@ -308,9 +310,9 @@ const LandlordOverview = () => {
             </div>
 
             {/* Property Status & Recent Activity */}
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className={cn("grid lg:grid-cols-2", isMobile ? "gap-6" : "gap-8")}>
                 {/* Portfolio Health */}
-                <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm p-8">
+                <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-sm", isMobile ? "p-6" : "p-8")}>
                     <h3 className="text-lg font-bold text-stone-900 mb-6 uppercase tracking-widest text-sm">Portfolio Health</h3>
                     <div className="space-y-6">
                         <div className="flex justify-between items-center">
@@ -318,8 +320,8 @@ const LandlordOverview = () => {
                                 <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Occupancy Rate</p>
                                 <p className="text-3xl font-bold text-stone-900">{businessPulse.occupancyRate}%</p>
                             </div>
-                            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                                <Layers className="h-8 w-8 text-primary" />
+                            <div className={cn("rounded-2xl bg-primary/10 flex items-center justify-center", isMobile ? "h-12 w-12" : "h-16 w-16")}>
+                                <Layers className={cn("text-primary", isMobile ? "h-6 w-6" : "h-8 w-8")} />
                             </div>
                         </div>
 
@@ -352,7 +354,7 @@ const LandlordOverview = () => {
                 </div>
 
                 {/* Recent Activity */}
-                <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm p-8">
+                <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-sm", isMobile ? "p-6" : "p-8")}>
                     <h3 className="text-lg font-bold text-stone-900 mb-6 uppercase tracking-widest text-sm">Recent Activity</h3>
                     <div className="space-y-4">
                         {businessPulse.recentPayments.slice(0, 4).map((payment) => (
@@ -388,13 +390,13 @@ const LandlordOverview = () => {
             </div>
 
             {/* Quick Actions Footer */}
-            <div className="bg-stone-50 rounded-[2.5rem] p-8 border border-stone-200">
+            <div className={cn("bg-stone-50 rounded-[2.5rem] border border-stone-200", isMobile ? "p-6" : "p-8")}>
                 <h3 className="text-lg font-bold text-stone-900 mb-6 uppercase tracking-widest text-sm">Quick Actions</h3>
-                <div className="grid md:grid-cols-4 gap-4">
+                <div className={cn("grid md:grid-cols-4", isMobile ? "grid-cols-2 gap-3" : "gap-4")}>
                     <Button
                         onClick={() => navigate("/landlord/properties")}
                         variant="outline"
-                        className="h-16 rounded-2xl border-stone-300 hover:bg-stone-100 flex flex-col items-center gap-2"
+                        className={cn("rounded-2xl border-stone-300 hover:bg-stone-100 flex flex-col items-center gap-2", isMobile ? "h-14" : "h-16")}
                     >
                         <Home className="h-6 w-6" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Add Property</span>
@@ -403,7 +405,7 @@ const LandlordOverview = () => {
                     <Button
                         onClick={() => navigate("/landlord/broadcasts")}
                         variant="outline"
-                        className="h-16 rounded-2xl border-stone-300 hover:bg-stone-100 flex flex-col items-center gap-2"
+                        className={cn("rounded-2xl border-stone-300 hover:bg-stone-100 flex flex-col items-center gap-2", isMobile ? "h-14" : "h-16")}
                     >
                         <Megaphone className="h-6 w-6" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Send Message</span>
@@ -412,7 +414,7 @@ const LandlordOverview = () => {
                     <Button
                         onClick={() => navigate("/landlord/financials")}
                         variant="outline"
-                        className="h-16 rounded-2xl border-stone-300 hover:bg-stone-100 flex flex-col items-center gap-2"
+                        className={cn("rounded-2xl border-stone-300 hover:bg-stone-100 flex flex-col items-center gap-2", isMobile ? "h-14" : "h-16")}
                     >
                         <TrendingUp className="h-6 w-6" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">View Reports</span>
@@ -421,7 +423,7 @@ const LandlordOverview = () => {
                     <Button
                         onClick={() => navigate("/landlord/residents")}
                         variant="outline"
-                        className="h-16 rounded-2xl border-stone-300 hover:bg-stone-100 flex flex-col items-center gap-2"
+                        className={cn("rounded-2xl border-stone-300 hover:bg-stone-100 flex flex-col items-center gap-2", isMobile ? "h-14" : "h-16")}
                     >
                         <Users className="h-6 w-6" />
                         <span className="text-[10px] font-bold uppercase tracking-widest">Manage Tenants</span>
