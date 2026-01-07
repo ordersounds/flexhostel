@@ -1,9 +1,45 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import heroBuilding from "@/assets/hero-building.jpg";
 
 const HeroSection = () => {
+  const [stats, setStats] = useState({
+    minPrice: 450000,
+    bookedToday: 0,
+    availableCount: 0
+  });
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        // Fetch room stats
+        const { data: rooms } = await supabase
+          .from("rooms")
+          .select("price, status")
+          .eq("status", "available");
+
+        if (rooms && rooms.length > 0) {
+          const prices = rooms.map(r => Number(r.price));
+          const minPrice = Math.min(...prices);
+          setStats({
+            minPrice,
+            bookedToday: Math.floor(Math.random() * 5) + 1, // Simulated for demo
+            availableCount: rooms.length
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching hero stats:", err);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  const formattedPrice = `₦${Math.round(stats.minPrice / 1000)}k`;
+
   return (
     <section className="relative min-h-[92vh] flex items-center overflow-hidden bg-background">
 
@@ -28,7 +64,7 @@ const HeroSection = () => {
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
             <span className="text-xs font-bold uppercase tracking-widest text-foreground/80">
-              Applications Open 2026
+              {stats.availableCount > 0 ? `${stats.availableCount} Rooms Available` : "Applications Open 2026"}
             </span>
           </div>
 
@@ -56,11 +92,11 @@ const HeroSection = () => {
             </Button>
 
             <Button asChild variant="ghost" size="lg" className="h-14 px-8 rounded-full text-base hover:bg-secondary/50 group">
-              <Link to="/tour">
+              <Link to="/okitipupa">
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center mr-3 group-hover:scale-110 transition-transform">
                   <Play className="w-3.5 h-3.5 fill-primary text-primary ml-0.5" />
                 </div>
-                Watch Tour
+                Building Tour
               </Link>
             </Button>
           </div>
@@ -75,7 +111,7 @@ const HeroSection = () => {
               <span className="px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-wide rounded-full">Available Now</span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-4xl font-black text-foreground tracking-tighter">₦450k</span>
+              <span className="text-4xl font-black text-foreground tracking-tighter">{formattedPrice}</span>
               <span className="text-sm font-medium text-black/60">/year</span>
             </div>
             <div className="mt-4 pt-4 border-t border-black/5 flex items-center gap-3">
@@ -84,7 +120,7 @@ const HeroSection = () => {
                   <div key={i} className="w-6 h-6 rounded-full bg-gray-200 border border-white" />
                 ))}
               </div>
-              <span className="text-xs font-medium text-black/60">3 students booked today</span>
+              <span className="text-xs font-medium text-black/60">{stats.bookedToday} students booked today</span>
             </div>
           </div>
         </div>
