@@ -32,19 +32,30 @@ const amenityIcons: Record<string, React.ReactNode> = {
 };
 
 const RoomDetail = () => {
-  const { roomName } = useParams();
+  const { buildingSlug, roomId } = useParams();
   const navigate = useNavigate();
+
+  const building = buildingSlug || "okitipupa";
+  const requestedRoomLabel = roomId ? roomId.replace(/-/g, " ") : "";
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [room, setRoom] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchRoom = async () => {
-      if (!roomName) return;
+      if (!roomId) {
+        setLoading(false);
+        return;
+      }
+
       setLoading(true);
 
       try {
-        const { data, error } = await supabase
+        const isUuid =
+          /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(roomId);
+
+        let query = supabase
           .from("rooms")
           .select(`
             *,
@@ -58,26 +69,36 @@ const RoomDetail = () => {
               phone_number,
               photo_url
             )
-          `)
-          .ilike("room_name", roomName.replace(/-/g, " "))
-          .single();
+          `);
+
+        query = isUuid
+          ? query.eq("id", roomId)
+          : query.ilike("room_name", requestedRoomLabel);
+
+        const { data, error } = await query.maybeSingle();
 
         if (error || !data) {
           toast.error("Room not found");
-          navigate("/okitipupa/rooms");
+          navigate(`/${building}/rooms`);
           return;
+        }
+
+        // Canonicalize legacy URLs like /rooms/alabama -> /rooms/<uuid>
+        if (!isUuid && data.id) {
+          navigate(`/${building}/rooms/${data.id}`, { replace: true });
         }
 
         setRoom({
           ...data,
-          images: data.gallery_images && (data.gallery_images as any).length > 0
-            ? data.gallery_images
-            : [data.cover_image_url || roomInterior, roomInterior, roomInterior],
+          images:
+            data.gallery_images && (data.gallery_images as any).length > 0
+              ? data.gallery_images
+              : [data.cover_image_url || roomInterior, roomInterior, roomInterior],
           amenities: (data.amenities as string[]) || [],
           agent: data.agent || {
             name: "John Adeyemi",
             phone: "+234 801 234 5678",
-          }
+          },
         });
       } catch (err) {
         console.error("Error fetching room:", err);
@@ -88,7 +109,7 @@ const RoomDetail = () => {
     };
 
     fetchRoom();
-  }, [roomName, navigate]);
+  }, [roomId, building, requestedRoomLabel, navigate]);
 
   if (loading) {
     return (
@@ -110,11 +131,15 @@ const RoomDetail = () => {
           </div>
           <h1 className="font-display text-4xl font-bold text-stone-900 tracking-tighter italic">"Suite Not Synchronized"</h1>
           <p className="text-stone-500 font-light leading-relaxed">
-            The room you are looking for ({roomName?.replace("-", " ")}) does not exist in our flagship registry yet.
+            The room you are looking for ({requestedRoomLabel || "Unknown"}) does not exist in our flagship registry yet.
           </p>
           <div className="pt-8">
-            <Button asChild size="lg" className="rounded-full px-10 font-bold bg-stone-950 text-white">
-              <Link to="/okitipupa/rooms">Return to Registry</Link>
+            <Button
+              size="lg"
+              className="rounded-full px-10 font-bold bg-stone-950 text-white"
+              onClick={() => navigate(`/${building}/rooms`)}
+            >
+              Return to Registry
             </Button>
           </div>
         </div>
@@ -145,7 +170,7 @@ const RoomDetail = () => {
           {/* Back Button & Breadcrumb */}
           <div className="mb-8 animate-reveal-up">
             <Link
-              to="/okitipupa/rooms"
+              to={`/${building}/rooms`}
               className="inline-flex items-center gap-2 text-stone-500 hover:text-primary transition-colors group font-bold uppercase tracking-widest text-[10px]"
             >
               <div className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all">
@@ -305,7 +330,7 @@ const RoomDetail = () => {
                   size="lg"
                   className="w-full h-16 rounded-full text-base font-bold shadow-xl hover:shadow-2xl hover:scale-105 transition-all bg-stone-950 text-white border-none group"
                   disabled={room.status !== "available"}
-                  onClick={() => navigate(`/apply/${room.room_name.toLowerCase().replace(" ", "-")}`)}
+                  onClick={() => navigate(`/application/${room.id}`)}
                 >
                   {room.status === "available" ? (
                     <span className="flex items-center gap-2">

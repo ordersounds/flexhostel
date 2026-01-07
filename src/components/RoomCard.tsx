@@ -21,6 +21,7 @@ const statusConfig = {
 };
 
 const RoomCard = ({
+  id,
   roomName,
   buildingName,
   buildingSlug,
@@ -38,7 +39,7 @@ const RoomCard = ({
 
   return (
     <Link
-      to={`/${buildingSlug}/rooms/${roomName.toLowerCase().replace(" ", "-")}`}
+      to={`/${buildingSlug}/rooms/${id}`}
       className="group block relative space-y-4"
     >
       {/* Image Container with Apple-style deep rounded corners */}
