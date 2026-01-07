@@ -17,14 +17,18 @@ const steps = [
 ];
 
 const ApplicationForm = () => {
-  const { roomName } = useParams();
+  const { roomId } = useParams();
   const navigate = useNavigate();
   const { user, profile, loading: authLoading } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [roomId, setRoomId] = useState<string | null>(null);
+  const [resolvedRoomId, setResolvedRoomId] = useState<string | null>(null);
+  const [roomMeta, setRoomMeta] = useState<{ room_name: string; building_slug: string } | null>(null);
 
-  const displayRoomName = roomName?.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Alabama";
+  const displayRoomName = roomMeta?.room_name || "Selected suite";
+  const cancelHref = roomId
+    ? `/${roomMeta?.building_slug || "okitipupa"}/rooms/${roomId}`
+    : `/${roomMeta?.building_slug || "okitipupa"}/rooms`;
 
   const [formData, setFormData] = useState({
     personal: {
@@ -69,27 +73,32 @@ const ApplicationForm = () => {
 
   useEffect(() => {
     const fetchRoom = async () => {
-      if (!roomName) return;
+      if (!roomId) return;
       setLoading(true);
 
-      // Fetch Room ID
-      const { data: roomData, error: roomError } = await supabase
+      const { data, error } = await supabase
         .from("rooms")
-        .select("id")
-        .ilike("room_name", roomName.replace(/-/g, " "))
-        .single();
+        .select(`id, room_name, buildings ( slug )`)
+        .eq("id", roomId)
+        .maybeSingle();
 
-      if (roomError || !roomData) {
-        toast.error(`The room "${roomName}" is not currently synchronized with our database. Please select an available suite.`);
+      if (error || !data) {
+        toast.error("This suite is not currently synchronized with our database. Please select an available suite.");
         navigate("/okitipupa/rooms");
+        setLoading(false);
         return;
       }
-      setRoomId(roomData.id);
+
+      setResolvedRoomId(data.id);
+      setRoomMeta({
+        room_name: data.room_name,
+        building_slug: (data as any).buildings?.slug || "okitipupa",
+      });
       setLoading(false);
     };
 
     fetchRoom();
-  }, [navigate, roomName]);
+  }, [navigate, roomId]);
 
   // Auth Protection
   useEffect(() => {
@@ -112,7 +121,7 @@ const ApplicationForm = () => {
   };
 
   const handleSubmit = async () => {
-    if (!roomId || !user) {
+    if (!resolvedRoomId || !user) {
       toast.error("Incomplete session data");
       return;
     }
@@ -122,7 +131,7 @@ const ApplicationForm = () => {
     try {
       const { error } = await supabase.from("applications").insert({
         user_id: user.id,
-        room_id: roomId,
+        room_id: resolvedRoomId,
         status: "pending",
         submitted_data: formData as any,
       });
@@ -147,7 +156,7 @@ const ApplicationForm = () => {
           {/* Editorial Back Button */}
           <div className="mb-8 md:mb-12 animate-reveal-up">
             <Link
-              to={`/okitipupa/rooms/${roomName}`}
+              to={cancelHref}
               className="inline-flex items-center gap-2 text-stone-500 hover:text-primary transition-colors group font-bold uppercase tracking-widest text-[10px]"
             >
               <div className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center group-hover:bg-primary group-hover:border-primary group-hover:text-white transition-all">
