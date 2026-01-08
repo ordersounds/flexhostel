@@ -309,14 +309,45 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                     <div className="bg-stone-50 rounded-[2rem] p-8 space-y-6">
                                         <div className="flex justify-between items-center">
                                             <h5 className="text-[10px] font-bold text-stone-900 uppercase tracking-widest">Configuration</h5>
-                                            <Button
-                                                variant="ghost"
-                                                size="sm"
-                                                className="h-8 w-8 p-0 rounded-full hover:bg-white"
-                                                onClick={() => setEditMode(!editMode)}
-                                            >
-                                                <Settings2 className={cn("h-4 w-4 transition-colors", editMode ? "text-primary" : "text-stone-400")} />
-                                            </Button>
+                                            {!editMode ? (
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="h-9 px-4 rounded-xl border-stone-200 hover:bg-stone-100 text-[10px] font-bold uppercase tracking-widest"
+                                                    onClick={() => setEditMode(true)}
+                                                >
+                                                    <Settings2 className="h-3.5 w-3.5 mr-2" />
+                                                    Edit
+                                                </Button>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-9 px-4 rounded-xl border-stone-200 text-[10px] font-bold uppercase tracking-widest"
+                                                        onClick={() => {
+                                                            setFormData({
+                                                                price: data.price.toString(),
+                                                                amenities: Array.isArray(data.amenities) ? data.amenities.join(", ") : "",
+                                                                agent_id: data.agent_id || "",
+                                                                cover_image_url: data.cover_image_url || "",
+                                                            });
+                                                            setEditMode(false);
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        className="h-9 px-4 rounded-xl bg-stone-900 text-white text-[10px] font-bold uppercase tracking-widest"
+                                                        onClick={handleUpdate}
+                                                        disabled={loading}
+                                                    >
+                                                        <Save className="h-3.5 w-3.5 mr-2" />
+                                                        Save
+                                                    </Button>
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="space-y-4">
@@ -375,15 +406,7 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                             </div>
                                         </div>
 
-                                        {editMode && (
-                                            <Button
-                                                className="w-full h-12 bg-stone-900 text-white rounded-xl font-bold uppercase tracking-widest text-[10px] animate-reveal-up"
-                                                onClick={handleUpdate}
-                                                disabled={loading}
-                                            >
-                                                <Save className="h-4 w-4 mr-2" /> Save Parameters
-                                            </Button>
-                                        )}
+
                                     </div>
 
                                     <div className="bg-primary/5 rounded-[2rem] p-8 flex items-center justify-between">
@@ -410,4 +433,3 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
 };
 
 export default RoomControlCenter;
-

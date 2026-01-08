@@ -9,6 +9,7 @@ import AddBuildingDialog from "./AddBuildingDialog";
 import AddRoomDialog from "./AddRoomDialog";
 import RoomControlCenter from "./RoomControlCenter";
 import ManageChargesDialog from "./ManageChargesDialog";
+import BuildingOptionsMenu from "./BuildingOptionsMenu";
 import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -268,11 +269,23 @@ const PropertyPortfolio = () => {
                         {filteredBuildings.map((building) => (
                             <div
                                 key={building.id}
-                                onClick={() => handleSelectBuilding(building)}
                                 className="group relative bg-white rounded-[2.5rem] border border-stone-100 overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 cursor-pointer"
                             >
+                                <BuildingOptionsMenu
+                                    buildingId={building.id}
+                                    buildingName={building.name}
+                                    currentImageUrl={building.cover_image_url || ""}
+                                    currentAgentId={building.agent_id}
+                                    currentName={building.name}
+                                    currentAddress={building.address}
+                                    onSuccess={() => fetchBuildings()}
+                                />
+
                                 {/* Cover Image */}
-                                <div className={cn("relative overflow-hidden", isMobile ? "h-40" : "h-52")}>
+                                <div
+                                    className={cn("relative overflow-hidden", isMobile ? "h-40" : "h-52")}
+                                    onClick={() => handleSelectBuilding(building)}
+                                >
                                     <img
                                         src={building.cover_image_url || "/placeholder.svg"}
                                         alt={building.name}

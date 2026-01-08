@@ -85,6 +85,10 @@ const BroadcastCenter = () => {
         groups: 0,
         announcements: 0
     });
+    const [showNewMessageDialog, setShowNewMessageDialog] = useState(false);
+    const [availableRecipients, setAvailableRecipients] = useState<any[]>([]);
+    const [recipientSearch, setRecipientSearch] = useState("");
+    const [conversations, setConversations] = useState<any[]>([]);
 
     // Function to calculate unread counts - can be called externally
     const calculateUnreadCounts = async () => {
@@ -115,6 +119,15 @@ const BroadcastCenter = () => {
             announcements: recentAnnouncements.length
         });
     };
+
+    // Load conversations whenever messages change
+    useEffect(() => {
+        const loadConversations = async () => {
+            const convos = await getUniqueConversations();
+            setConversations(convos);
+        };
+        loadConversations();
+    }, [messages, buildings]);
 
     useEffect(() => {
         fetchBuildings();
@@ -179,7 +192,7 @@ const BroadcastCenter = () => {
                 *,
                 sender:profiles!messages_sender_id_fkey(name, email, photo_url, role)
             `)
-            .or(`receiver_id.eq.${user.id},building_id.not.is.null`)
+            .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id},building_id.not.is.null`)
             .order("created_at", { ascending: false });
 
         if (error) {
@@ -207,6 +220,108 @@ const BroadcastCenter = () => {
             console.error("Announcements fetch error:", error);
         } else {
             setAnnouncements(data || []);
+        }
+    };
+
+    const fetchRecipients = async () => {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        try {
+            // Get building IDs owned by landlord
+            const { data: landlordBuildings, error: buildingsError } = await supabase
+                .from("buildings")
+                .select("id")
+                .eq("landlord_id", user.id);
+
+            if (buildingsError) {
+                console.error("Buildings fetch error:", buildingsError);
+                setAvailableRecipients([]);
+                return;
+            }
+
+            if (!landlordBuildings || landlordBuildings.length === 0) {
+                console.log("No buildings found for landlord");
+                setAvailableRecipients([]);
+                return;
+            }
+
+            const buildingIds = landlordBuildings.map(b => b.id);
+            console.log("Landlord building IDs:", buildingIds);
+
+            // Get room IDs in landlord's buildings
+            const { data: rooms, error: roomsError } = await supabase
+                .from("rooms")
+                .select("id")
+                .in("building_id", buildingIds);
+
+            if (roomsError) {
+                console.error("Rooms fetch error:", roomsError);
+                setAvailableRecipients([]);
+                return;
+            }
+
+            const roomIds = rooms?.map(r => r.id) || [];
+            console.log("Room IDs in landlord buildings:", roomIds);
+
+            // Fetch tenants with active tenancies in landlord's rooms
+            const { data: tenants, error: tenantsError } = await supabase
+                .from("profiles")
+                .select(`
+                    id, name, email, role, photo_url
+                `)
+                .eq("role", "tenant")
+                .eq("status", "active");
+
+            if (tenantsError) {
+                console.error("Tenants fetch error:", tenantsError);
+            }
+
+            // Filter tenants who have active tenancies in landlord's rooms
+            let filteredTenants = [];
+            if (tenants && tenants.length > 0 && roomIds.length > 0) {
+                const tenantIds = tenants.map(t => t.id);
+                const { data: tenancies, error: tenanciesError } = await supabase
+                    .from("tenancies")
+                    .select("tenant_id")
+                    .in("tenant_id", tenantIds)
+                    .in("room_id", roomIds)
+                    .eq("status", "active");
+
+                if (!tenanciesError && tenancies) {
+                    const tenantIdsWithActiveTenancies = tenancies.map(t => t.tenant_id);
+                    filteredTenants = tenants.filter(t => tenantIdsWithActiveTenancies.includes(t.id));
+                }
+            }
+
+            // Fetch agents assigned to rooms in landlord's buildings
+            const { data: agents, error: agentsError } = await supabase
+                .from("profiles")
+                .select(`
+                    id, name, email, role, photo_url
+                `)
+                .eq("role", "agent")
+                .in("id", roomIds.length > 0 ?
+                    (await supabase.from("rooms").select("agent_id").in("id", roomIds)).data?.map(r => r.agent_id).filter(Boolean) || []
+                    : []
+                );
+
+            if (agentsError) {
+                console.error("Agents fetch error:", agentsError);
+            }
+
+            // Combine recipients
+            const recipients = [
+                ...(filteredTenants || []).map(t => ({ ...t, type: 'tenant' })),
+                ...(agents || []).map(a => ({ ...a, type: 'agent' }))
+            ];
+
+            console.log("Final recipients:", recipients);
+            setAvailableRecipients(recipients);
+
+        } catch (error) {
+            console.error("Error in fetchRecipients:", error);
+            setAvailableRecipients([]);
         }
     };
 
@@ -271,8 +386,10 @@ const BroadcastCenter = () => {
         }
     };
 
-    const getUniqueConversations = () => {
+    const getUniqueConversations = async () => {
         const conversations = new Map();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return [];
 
         messages.forEach(message => {
             if (message.building_id) {
@@ -289,14 +406,16 @@ const BroadcastCenter = () => {
                     });
                 }
             } else if (message.receiver_id || message.sender_id) {
-                // Direct message
-                const otherUserId = message.sender_id === message.sender_id ? message.receiver_id : message.sender_id;
+                // Direct message - find the other participant
+                const otherUserId = message.sender_id === user.id ? message.receiver_id : message.sender_id;
                 if (otherUserId && !conversations.has(otherUserId)) {
+                    // Determine which profile to use for the conversation details
+                    const otherProfile = message.sender_id === user.id ? null : message.sender;
                     conversations.set(otherUserId, {
                         id: otherUserId,
                         type: 'direct',
-                        name: message.sender?.name || 'Unknown User',
-                        role: message.sender?.role,
+                        name: otherProfile?.name || 'Unknown User',
+                        role: otherProfile?.role,
                         lastMessage: message,
                         unread: false // TODO: Implement unread logic
                     });
@@ -359,7 +478,7 @@ const BroadcastCenter = () => {
                                 </div>
                                 <ScrollArea className="h-[500px]">
                                     <div className="p-3 space-y-2">
-                                        {getUniqueConversations().map((conversation) => (
+                                        {conversations.map((conversation) => (
                                             <button
                                                 key={conversation.id}
                                                 onClick={() => {
@@ -401,7 +520,7 @@ const BroadcastCenter = () => {
                             </div>
                         ) : (
                             // Chat View - Full screen on mobile
-                            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col h-[600px]">
+                            <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-200px)]">
                                 <div className="p-4 border-b border-stone-100">
                                     <div className="flex items-center gap-3">
                                         <Button
@@ -413,7 +532,7 @@ const BroadcastCenter = () => {
                                             <ArrowLeft className="h-4 w-4" />
                                         </Button>
                                         <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">
-                                            {getUniqueConversations().find(c => c.id === selectedConversation)?.name || 'Chat'}
+                                            {conversations.find(c => c.id === selectedConversation)?.name || 'Chat'}
                                         </h3>
                                     </div>
                                 </div>
@@ -485,12 +604,24 @@ const BroadcastCenter = () => {
                         <div className="grid lg:grid-cols-3 gap-8 h-[600px]">
                             {/* Conversations List */}
                             <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-sm overflow-hidden lg:col-span-1">
-                                <div className="p-6 border-b border-stone-100">
+                                <div className="p-6 border-b border-stone-100 flex justify-between items-center">
                                     <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">Conversations</h3>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 px-3 text-stone-500 hover:text-stone-900"
+                                        onClick={async () => {
+                                            await fetchRecipients();
+                                            setShowNewMessageDialog(true);
+                                        }}
+                                    >
+                                        <MessageSquare className="h-4 w-4 mr-1" />
+                                        New
+                                    </Button>
                                 </div>
                                 <ScrollArea className="h-[500px]">
                                     <div className="p-4 space-y-2">
-                                        {getUniqueConversations().map((conversation) => (
+                                        {conversations.map((conversation) => (
                                             <button
                                                 key={conversation.id}
                                                 onClick={() => setSelectedConversation(conversation.id)}
@@ -538,7 +669,7 @@ const BroadcastCenter = () => {
                                     <>
                                         <div className="p-6 border-b border-stone-100">
                                             <h3 className="text-sm font-bold text-stone-900 uppercase tracking-widest">
-                                                {getUniqueConversations().find(c => c.id === selectedConversation)?.name || 'Chat'}
+                                                {conversations.find(c => c.id === selectedConversation)?.name || 'Chat'}
                                             </h3>
                                         </div>
                                         <ScrollArea className="flex-1">
@@ -916,6 +1047,81 @@ const BroadcastCenter = () => {
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* New Message Dialog */}
+            {showNewMessageDialog && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-[2.5rem] border border-stone-100 shadow-xl max-w-md w-full max-h-[80vh] overflow-hidden">
+                        <div className="p-6 border-b border-stone-100 flex justify-between items-center">
+                            <h3 className="text-lg font-bold text-stone-900 uppercase tracking-widest text-sm">New Message</h3>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowNewMessageDialog(false)}
+                                className="h-8 w-8 p-0"
+                            >
+                                ✕
+                            </Button>
+                        </div>
+
+                        <div className="p-6">
+                            <div className="mb-4">
+                                <Input
+                                    value={recipientSearch}
+                                    onChange={(e) => setRecipientSearch(e.target.value)}
+                                    placeholder="Search tenants and agents..."
+                                    className="rounded-xl"
+                                />
+                            </div>
+
+                            <ScrollArea className="h-64">
+                                <div className="space-y-2">
+                                    {availableRecipients
+                                        .filter(recipient =>
+                                            recipient.name.toLowerCase().includes(recipientSearch.toLowerCase()) ||
+                                            recipient.email.toLowerCase().includes(recipientSearch.toLowerCase())
+                                        )
+                                        .map((recipient) => (
+                                        <button
+                                            key={recipient.id}
+                                            onClick={() => {
+                                                setSelectedConversation(recipient.id);
+                                                setShowNewMessageDialog(false);
+                                                setViewMode('chat'); // For mobile
+                                            }}
+                                            className="w-full rounded-2xl p-3 text-left transition-all hover:bg-stone-50 flex items-center gap-3"
+                                        >
+                                            <Avatar className="h-10 w-10">
+                                                <AvatarImage src={recipient.photo_url} />
+                                                <AvatarFallback className="text-xs">
+                                                    {recipient.name.charAt(0)}
+                                                </AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-bold text-stone-900 truncate">
+                                                    {recipient.name}
+                                                </p>
+                                                <p className="text-xs text-stone-500 truncate">
+                                                    {recipient.email}
+                                                </p>
+                                                <Badge className="mt-1 text-[8px] px-1.5 py-0.5" variant="outline">
+                                                    {recipient.type}
+                                                </Badge>
+                                            </div>
+                                        </button>
+                                    ))}
+                                    {availableRecipients.length === 0 && (
+                                        <div className="text-center py-8">
+                                            <Users className="h-8 w-8 text-stone-300 mx-auto mb-3" />
+                                            <p className="text-stone-500 text-sm">No recipients found</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </ScrollArea>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

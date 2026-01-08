@@ -157,7 +157,7 @@ Deno.serve(async (req) => {
         const endDate = new Date();
         endDate.setFullYear(endDate.getFullYear() + 1);
 
-        const { error: tenancyError } = await supabase
+        const { data: tenancy, error: tenancyError } = await supabase
           .from("tenancies")
           .insert({
             tenant_id: application.user_id,
@@ -166,7 +166,9 @@ Deno.serve(async (req) => {
             start_date: startDate.toISOString().split("T")[0],
             end_date: endDate.toISOString().split("T")[0],
             status: "active",
-          });
+          })
+          .select()
+          .single();
 
         if (tenancyError) {
           console.error("Error creating tenancy:", tenancyError);
@@ -174,6 +176,17 @@ Deno.serve(async (req) => {
             JSON.stringify({ error: "Failed to create tenancy" }),
             { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
           );
+        }
+
+        // Update payment with tenancy_id
+        const { error: paymentUpdateError } = await supabase
+          .from("payments")
+          .update({ tenancy_id: tenancy.id })
+          .eq("id", newPayment.id);
+
+        if (paymentUpdateError) {
+          console.error("Error updating payment tenancy_id:", paymentUpdateError);
+          // Continue with other updates even if this fails
         }
 
         // Update room status and user role

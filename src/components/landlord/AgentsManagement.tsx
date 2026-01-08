@@ -20,13 +20,97 @@ const AgentsManagement = () => {
 
     const fetchAgents = async () => {
         setLoading(true);
-        const { data: agentData } = await supabase
-            .from("profiles")
-            .select("*")
-            .eq("role", "agent");
+        try {
+            // Get all agents
+            const { data: agentData } = await supabase
+                .from("profiles")
+                .select("*")
+                .eq("role", "agent");
 
-        setAgents(agentData || []);
-        setLoading(false);
+            if (!agentData) {
+                setAgents([]);
+                return;
+            }
+
+            // Get comprehensive data for each agent
+            const agentsWithStats = await Promise.all(
+                agentData.map(async (agent) => {
+                    // Get buildings assigned to agent
+                    const { data: buildings } = await supabase
+                        .from("buildings")
+                        .select("id, name")
+                        .eq("agent_id", agent.id);
+
+                    // Get rooms assigned to agent (either directly or through buildings)
+                    const { data: rooms } = await supabase
+                        .from("rooms")
+                        .select(`
+                            id, price, status, building_id,
+                            buildings(name)
+                        `)
+                        .eq("agent_id", agent.id);
+
+                    const buildingIds = buildings?.map(b => b.id) || [];
+                    const { data: buildingRooms } = await supabase
+                        .from("rooms")
+                        .select(`
+                            id, price, status, building_id,
+                            buildings(name)
+                        `)
+                        .in("building_id", buildingIds)
+                        .is("agent_id", null); // Rooms assigned at building level
+
+                    const allRooms = [...(rooms || []), ...(buildingRooms || [])];
+                    const portfolioValue = allRooms.reduce((sum, room) => sum + (Number(room.price) || 0), 0);
+
+                    // Calculate occupancy
+                    const occupiedRooms = allRooms.filter(room => room.status === "occupied").length;
+                    const occupancyRate = allRooms.length > 0 ? Math.round((occupiedRooms / allRooms.length) * 100) : 0;
+
+                    // Get revenue data (last 30 days)
+                    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+                    const roomIds = allRooms.map(r => r.id);
+
+                    // First get tenancies for these rooms
+                    const { data: tenancies } = await supabase
+                        .from("tenancies")
+                        .select("id")
+                        .in("room_id", roomIds);
+
+                    const tenancyIds = tenancies?.map(t => t.id) || [];
+
+                    // Then get payments for those tenancies
+                    const { data: recentPayments } = await supabase
+                        .from("payments")
+                        .select("amount, status")
+                        .in("tenancy_id", tenancyIds)
+                        .gte("created_at", thirtyDaysAgo.toISOString());
+
+                    const totalRevenue = recentPayments?.reduce((sum, p) => sum + (Number(p.amount) || 0), 0) || 0;
+                    const successfulPayments = recentPayments?.filter(p => p.status === "success").length || 0;
+                    const totalPayments = recentPayments?.length || 0;
+                    const collectionRate = totalPayments > 0 ? Math.round((successfulPayments / totalPayments) * 100) : 100;
+
+                    return {
+                        ...agent,
+                        buildingsCount: buildings?.length || 0,
+                        roomsCount: allRooms.length,
+                        portfolioValue,
+                        occupancyRate,
+                        activeTenants: occupiedRooms,
+                        monthlyRevenue: totalRevenue,
+                        collectionRate
+                    };
+                })
+            );
+
+            setAgents(agentsWithStats);
+        } catch (error) {
+            console.error("Error fetching agents:", error);
+            setAgents([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -78,21 +162,36 @@ const AgentsManagement = () => {
                                     </div>
 
                                     <div className="space-y-4 mb-6">
-                                        <div>
-                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2">Coverage</p>
-                                            <div className="flex flex-wrap gap-2">
-                                                <Badge className="bg-stone-100 text-stone-600 border-none text-[8px] font-bold uppercase tracking-widest px-3 py-1">Okitipupa Building</Badge>
-                                                <Badge className="bg-stone-900 text-white border-none text-[8px] font-bold uppercase tracking-widest px-3 py-1">12 Rooms</Badge>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Buildings</p>
+                                                <p className="text-lg font-bold text-stone-900">{agent.buildingsCount}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Rooms</p>
+                                                <p className="text-lg font-bold text-stone-900">{agent.roomsCount}</p>
                                             </div>
                                         </div>
 
-                                        <div>
-                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2">Performance</p>
-                                            <div className="flex items-center gap-3">
-                                                <div className="flex-1 h-2 bg-stone-100 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-primary w-[85%] rounded-full" />
-                                                </div>
-                                                <span className="text-sm font-bold text-stone-900">85%</span>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Occupancy</p>
+                                                <p className="text-lg font-bold text-stone-900">{agent.occupancyRate}%</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Active Tenants</p>
+                                                <p className="text-lg font-bold text-stone-900">{agent.activeTenants}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Monthly Revenue</p>
+                                                <p className="text-lg font-bold text-stone-900">₦{(agent.monthlyRevenue / 1000).toFixed(0)}K</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Collection Rate</p>
+                                                <p className="text-lg font-bold text-stone-900">{agent.collectionRate}%</p>
                                             </div>
                                         </div>
                                     </div>
@@ -109,8 +208,10 @@ const AgentsManagement = () => {
                             <thead>
                                 <tr className="bg-stone-50/50 border-b border-stone-100">
                                     <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Agent</th>
-                                    <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Coverage</th>
-                                    <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Performance</th>
+                                    <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Buildings</th>
+                                    <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Rooms</th>
+                                    <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Occupancy</th>
+                                    <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest">Revenue</th>
                                     <th className="px-8 py-6 text-[10px] font-bold text-stone-400 uppercase tracking-widest text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -129,17 +230,24 @@ const AgentsManagement = () => {
                                             </div>
                                         </td>
                                         <td className="px-8 py-6">
-                                            <div className="flex flex-wrap gap-2">
-                                                <Badge className="bg-stone-100 text-stone-600 border-none text-[8px] font-bold uppercase tracking-widest px-2.5 py-1">Okitipupa Building</Badge>
-                                                <Badge className="bg-stone-900 text-white border-none text-[8px] font-bold uppercase tracking-widest px-2.5 py-1">12 Rooms</Badge>
+                                            <span className="font-bold text-stone-900 text-sm">{agent.buildingsCount}</span>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div>
+                                                <p className="font-bold text-stone-900 text-sm">{agent.roomsCount}</p>
+                                                <p className="text-[10px] text-stone-500">₦{(agent.portfolioValue / 1000).toFixed(0)}K value</p>
                                             </div>
                                         </td>
                                         <td className="px-8 py-6">
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden w-24">
-                                                    <div className="h-full bg-primary w-[85%] rounded-full" />
-                                                </div>
-                                                <span className="text-[10px] font-bold text-stone-900">85%</span>
+                                            <div>
+                                                <p className="font-bold text-stone-900 text-sm">{agent.occupancyRate}%</p>
+                                                <p className="text-[10px] text-stone-500">{agent.activeTenants} tenants</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div>
+                                                <p className="font-bold text-stone-900 text-sm">₦{(agent.monthlyRevenue / 1000).toFixed(0)}K</p>
+                                                <p className="text-[10px] text-stone-500">{agent.collectionRate}% collected</p>
                                             </div>
                                         </td>
                                         <td className="px-8 py-6 text-right">

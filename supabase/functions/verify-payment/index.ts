@@ -140,6 +140,17 @@ Deno.serve(async (req) => {
         } else {
           console.log("Tenancy created:", tenancy.id);
 
+          // Update payment with tenancy_id
+          const { error: paymentUpdateError } = await supabase
+            .from("payments")
+            .update({ tenancy_id: tenancy.id })
+            .eq("id", payment.id);
+
+          if (paymentUpdateError) {
+            console.error("Error updating payment tenancy_id:", paymentUpdateError);
+            // Continue with other updates even if this fails
+          }
+
           // Update room status to occupied
           await supabase
             .from("rooms")

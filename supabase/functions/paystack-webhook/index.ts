@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
           const endDate = new Date();
           endDate.setFullYear(endDate.getFullYear() + 1);
 
-          const { error: tenancyError } = await supabase
+          const { data: tenancy, error: tenancyError } = await supabase
             .from("tenancies")
             .insert({
               tenant_id: payment.user_id,
@@ -104,9 +104,22 @@ Deno.serve(async (req) => {
               start_date: startDate.toISOString().split("T")[0],
               end_date: endDate.toISOString().split("T")[0],
               status: "active",
-            });
+            })
+            .select()
+            .single();
 
-          if (!tenancyError) {
+          if (!tenancyError && tenancy) {
+            // Update payment with tenancy_id
+            const { error: paymentUpdateError } = await supabase
+              .from("payments")
+              .update({ tenancy_id: tenancy.id })
+              .eq("id", payment.id);
+
+            if (paymentUpdateError) {
+              console.error("Error updating payment tenancy_id:", paymentUpdateError);
+              // Continue with other updates even if this fails
+            }
+
             await supabase
               .from("rooms")
               .update({ status: "occupied" })
