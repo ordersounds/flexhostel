@@ -139,12 +139,6 @@ const LandlordFinancials = () => {
                 </div>
                 <div className={cn("flex gap-3 flex-wrap", isMobile ? "w-full justify-center" : "")}>
                     <ManualPaymentDialog onPaymentCreated={fetchFinancialData} />
-                    <Button variant="outline" className={cn("rounded-2xl border-stone-100 p-0", isMobile ? "h-12 w-12" : "h-14 w-14")}>
-                        <Filter className={cn("text-stone-400", isMobile ? "h-4 w-4" : "h-5 w-5")} />
-                    </Button>
-                    <Button className={cn("rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20", isMobile ? "flex-1 h-12 px-6" : "h-14 px-8")}>
-                        <Download className={cn("mr-2", isMobile ? "h-3 w-3" : "h-4 w-4")} /> Export CSV
-                    </Button>
                 </div>
             </div>
 
@@ -242,7 +236,7 @@ const LandlordFinancials = () => {
                                             onClick={() => setConfirmDialog({ open: true, paymentId: tx.id })}
                                             disabled={markingPaid === tx.id}
                                             size="sm"
-                                            className="w-full mt-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-widest"
+                                            className="w-full mt-4 rounded-xl bg-stone-900 text-white font-bold text-[10px] uppercase tracking-widest shadow-xl shadow-stone-900/20"
                                         >
                                             {markingPaid === tx.id ? (
                                                 <Loader2 className="h-3 w-3 animate-spin" />
@@ -320,8 +314,7 @@ const LandlordFinancials = () => {
                                                     onClick={() => setConfirmDialog({ open: true, paymentId: tx.id })}
                                                     disabled={markingPaid === tx.id}
                                                     size="sm"
-                                                    variant="outline"
-                                                    className="rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-bold text-[9px] uppercase tracking-widest"
+                                                    className="rounded-xl bg-stone-900 text-white font-bold text-[9px] uppercase tracking-widest shadow-xl shadow-stone-900/20"
                                                 >
                                                     {markingPaid === tx.id ? (
                                                         <Loader2 className="h-3 w-3 animate-spin" />

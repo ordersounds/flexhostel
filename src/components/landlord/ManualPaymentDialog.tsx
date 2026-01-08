@@ -1,10 +1,9 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Plus } from "lucide-react";
@@ -16,84 +15,59 @@ interface ManualPaymentDialogProps {
 const ManualPaymentDialog = ({ onPaymentCreated }: ManualPaymentDialogProps) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [tenants, setTenants] = useState<any[]>([]);
-  const [charges, setCharges] = useState<any[]>([]);
-  
-  const [tenantId, setTenantId] = useState("");
-  const [paymentType, setPaymentType] = useState<"rent" | "charge" | "manual">("manual");
-  const [chargeId, setChargeId] = useState("");
-  const [amount, setAmount] = useState("");
+  const [pendingPayments, setPendingPayments] = useState<any[]>([]);
+
+  const [selectedPaymentId, setSelectedPaymentId] = useState("");
   const [notes, setNotes] = useState("");
 
   useEffect(() => {
     if (open) {
-      fetchTenantsAndCharges();
+      fetchPendingPayments();
     }
   }, [open]);
 
-  const fetchTenantsAndCharges = async () => {
-    // Fetch tenants (profiles with active tenancies or approved applications)
-    const { data: tenancyData } = await supabase
-      .from("tenancies")
-      .select("tenant_id")
-      .eq("status", "active");
-
-    const { data: applicationData } = await supabase
+  const fetchPendingPayments = async () => {
+    // Fetch approved applications that don't have successful rent payments
+    const { data, error } = await supabase
       .from("applications")
-      .select("user_id")
-      .eq("status", "approved");
+      .select(`
+        *,
+        applicant:profiles!applications_user_id_fkey(name, email, photo_url),
+        room:rooms(room_name, price, building:buildings(name))
+      `)
+      .eq("status", "approved")
+      .filter("user_id", "not.in", `(${await getUsersWithSuccessfulRentPayments()})`)
+      .order("approved_at", { ascending: false });
 
-    // Get unique user IDs
-    const userIds = new Set<string>();
-    tenancyData?.forEach(t => userIds.add(t.tenant_id));
-    applicationData?.forEach(a => userIds.add(a.user_id));
-
-    // Fetch profiles for these users
-    if (userIds.size > 0) {
-      const { data: profilesData } = await supabase
-        .from("profiles")
-        .select("id, name, email")
-        .in("id", Array.from(userIds));
-      
-      setTenants(profilesData || []);
+    if (error) {
+      toast.error("Failed to load approved applications");
     } else {
-      setTenants([]);
+      setPendingPayments(data || []);
     }
-
-    // Fetch charges
-    const { data: chargeData } = await supabase
-      .from("charges")
-      .select("*")
-      .eq("status", "active");
-    
-    setCharges(chargeData || []);
   };
 
-  const handleChargeSelect = (chargeIdValue: string) => {
-    setChargeId(chargeIdValue);
-    const charge = charges.find(c => c.id === chargeIdValue);
-    if (charge) {
-      setAmount(charge.amount.toString());
-    }
+  const getUsersWithSuccessfulRentPayments = async (): Promise<string> => {
+    const { data } = await supabase
+      .from("payments")
+      .select("user_id")
+      .eq("payment_type", "rent")
+      .eq("status", "success");
+
+    return data?.map(p => p.user_id).join(",") || "";
   };
 
   const handleSubmit = async () => {
-    if (!tenantId || !amount) {
-      toast.error("Please select a tenant and enter an amount");
+    if (!selectedPaymentId) {
+      toast.error("Please select an application to mark as paid");
       return;
     }
 
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
       const response = await supabase.functions.invoke("confirm-manual-payment", {
         body: {
-          tenant_id: tenantId,
-          payment_type: paymentType,
-          amount: parseFloat(amount),
-          charge_id: paymentType === "charge" ? chargeId : null,
+          application_id: selectedPaymentId,
           notes,
         },
       });
@@ -103,15 +77,15 @@ const ManualPaymentDialog = ({ onPaymentCreated }: ManualPaymentDialogProps) => 
       }
 
       if (response.data?.success) {
-        toast.success("Manual payment recorded successfully");
+        toast.success("Rent payment recorded successfully");
         setOpen(false);
         resetForm();
         onPaymentCreated();
       } else {
-        throw new Error(response.data?.error || "Failed to create payment");
+        throw new Error(response.data?.error || "Failed to record payment");
       }
     } catch (error: any) {
-      console.error("Manual payment error:", error);
+      console.error("Payment confirmation error:", error);
       toast.error(error.message || "Failed to record payment");
     } finally {
       setLoading(false);
@@ -119,95 +93,89 @@ const ManualPaymentDialog = ({ onPaymentCreated }: ManualPaymentDialogProps) => 
   };
 
   const resetForm = () => {
-    setTenantId("");
-    setPaymentType("manual");
-    setChargeId("");
-    setAmount("");
+    setSelectedPaymentId("");
     setNotes("");
+  };
+
+  const getPaymentDescription = (payment: any) => {
+    if (payment.payment_type === "rent") {
+      return `Rent for ${payment.application?.room?.room_name} at ${payment.application?.room?.building?.name}`;
+    } else if (payment.payment_type === "charge") {
+      return `${payment.charge?.name} charge`;
+    } else {
+      return "Manual payment";
+    }
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="rounded-2xl bg-primary text-white font-bold uppercase tracking-widest text-[10px] h-12 px-6">
+        <Button className="rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20 h-12 px-6">
           <Plus className="h-4 w-4 mr-2" />
-          Record Manual Payment
+          Mark Payment as Received
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-display text-2xl">Record Manual Payment</DialogTitle>
+          <DialogTitle className="font-display text-2xl">Mark Payment as Received</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 py-4">
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Tenant</Label>
-            <Select value={tenantId} onValueChange={setTenantId}>
-              <SelectTrigger className="rounded-xl h-12">
-                <SelectValue placeholder="Select tenant" />
-              </SelectTrigger>
-              <SelectContent>
-                {tenants.map(tenant => (
-                  <SelectItem key={tenant.id} value={tenant.id}>
-                    {tenant.name} ({tenant.email})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Payment Type</Label>
-            <Select value={paymentType} onValueChange={(v: "rent" | "charge" | "manual") => setPaymentType(v)}>
-              <SelectTrigger className="rounded-xl h-12">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="rent">Rent Payment</SelectItem>
-                <SelectItem value="charge">Charge Payment</SelectItem>
-                <SelectItem value="manual">Other Payment</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {paymentType === "charge" && (
-            <div className="space-y-2">
-              <Label className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Select Charge</Label>
-              <Select value={chargeId} onValueChange={handleChargeSelect}>
-                <SelectTrigger className="rounded-xl h-12">
-                  <SelectValue placeholder="Select charge" />
-                </SelectTrigger>
-                <SelectContent>
-                  {charges.map(charge => (
-                    <SelectItem key={charge.id} value={charge.id}>
-                      {charge.name} (₦{Number(charge.amount).toLocaleString()})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {pendingPayments.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-stone-500">No pending payments to mark as received.</p>
             </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Select Payment</Label>
+                <RadioGroup value={selectedPaymentId} onValueChange={setSelectedPaymentId}>
+                  <div className="space-y-3 max-h-60 overflow-y-auto">
+                    {pendingPayments.map(application => (
+                      <div key={application.id} className="flex items-center space-x-3 p-3 rounded-xl border border-stone-100 hover:bg-stone-50">
+                        <RadioGroupItem value={application.id} id={application.id} />
+                        <label htmlFor={application.id} className="flex-1 cursor-pointer">
+                          <div className="flex justify-between items-start">
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 rounded-full ring-2 ring-white shadow-sm overflow-hidden bg-stone-100">
+                                {application.applicant?.photo_url ? (
+                                  <img src={application.applicant.photo_url} className="w-full h-full object-cover" />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center font-bold text-xs text-stone-400">
+                                    {application.applicant?.name?.charAt(0)}
+                                  </div>
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-bold text-stone-900 text-sm">{application.applicant?.name}</p>
+                                <p className="text-[10px] text-stone-500 uppercase tracking-widest">
+                                  Rent for Room {application.room?.room_name} at {application.room?.building?.name}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-bold text-stone-900">₦{Number(application.room?.price).toLocaleString()}</p>
+                              <p className="text-[9px] text-stone-400 uppercase tracking-widest">Rent Payment</p>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </RadioGroup>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Notes (Optional)</Label>
+                <Textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="e.g., Paid via bank transfer, reference #12345"
+                  className="rounded-xl min-h-[80px]"
+                />
+              </div>
+            </>
           )}
-
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Amount (₦)</Label>
-            <Input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="Enter amount"
-              className="rounded-xl h-12"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-[10px] font-bold uppercase tracking-widest text-stone-500">Notes (Optional)</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="e.g., Paid via bank transfer, reference #12345"
-              className="rounded-xl min-h-[80px]"
-            />
-          </div>
         </div>
 
         <div className="flex gap-3">
@@ -222,12 +190,12 @@ const ManualPaymentDialog = ({ onPaymentCreated }: ManualPaymentDialogProps) => 
           <Button
             onClick={handleSubmit}
             className="flex-1 rounded-xl h-12 bg-stone-900"
-            disabled={loading}
+            disabled={loading || pendingPayments.length === 0}
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              "Record Payment"
+              "Mark as Received"
             )}
           </Button>
         </div>
