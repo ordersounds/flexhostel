@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { CreditCard, Wallet, ArrowDownRight, ArrowUpRight, Search, FileText, Download, Filter, Loader2 } from "lucide-react";
+import { CreditCard, Wallet, ArrowDownRight, ArrowUpRight, Search, FileText, Download, Filter, Loader2, CheckCircle2 } from "lucide-react";
 import StatCard from "./StatCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,17 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ManualPaymentDialog from "./ManualPaymentDialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const LandlordFinancials = () => {
     const isMobile = useIsMobile();
@@ -19,6 +30,8 @@ const LandlordFinancials = () => {
         forecast: 0,
         debt: 0
     });
+    const [markingPaid, setMarkingPaid] = useState<string | null>(null);
+    const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; paymentId: string | null }>({ open: false, paymentId: null });
 
     useEffect(() => {
         fetchFinancialData();
@@ -33,12 +46,7 @@ const LandlordFinancials = () => {
             .select(`
                 *,
                 profiles:user_id (name),
-                tenancies:tenancies!tenancy_id (
-                    rooms (
-                        room_name,
-                        price
-                    )
-                )
+                charges:charge_id (name)
             `)
             .order("created_at", { ascending: false });
 
@@ -66,12 +74,58 @@ const LandlordFinancials = () => {
         setLoading(false);
     };
 
+    const handleMarkAsPaid = async (paymentId: string) => {
+        setMarkingPaid(paymentId);
+        
+        try {
+            const { data, error } = await supabase.functions.invoke("confirm-manual-payment", {
+                body: { payment_id: paymentId, notes: "Manually marked as paid by landlord" },
+            });
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            if (data?.success) {
+                toast.success("Payment marked as paid");
+                fetchFinancialData();
+            } else {
+                throw new Error(data?.error || "Failed to update payment");
+            }
+        } catch (err: any) {
+            console.error("Mark as paid error:", err);
+            toast.error(err.message || "Failed to mark as paid");
+        } finally {
+            setMarkingPaid(null);
+            setConfirmDialog({ open: false, paymentId: null });
+        }
+    };
+
+    const getPaymentTypeLabel = (payment: any) => {
+        if (payment.payment_type === 'charge' && payment.charges?.name) {
+            return payment.charges.name;
+        }
+        if (payment.payment_type === 'rent') return 'Rent';
+        if (payment.payment_type === 'manual') return 'Manual';
+        if (payment.charge_id) return 'Charge';
+        if (payment.application_id) return 'Application';
+        return 'Other';
+    };
+
+    const getPaymentMethod = (payment: any) => {
+        if (payment.manual_confirmation_by) return 'Manual';
+        if (payment.payment_method === 'card') return 'Card';
+        if (payment.payment_method === 'bank') return 'Bank';
+        if (payment.payment_method === 'ussd') return 'USSD';
+        if (payment.payment_method) return payment.payment_method;
+        return 'Paystack';
+    };
+
     const filteredLedger = payments.filter(p => {
         const tenantName = p.profiles?.name?.toLowerCase() || "";
-        const roomName = p.tenancies?.rooms?.room_name?.toLowerCase() || "";
         const txId = p.id.toLowerCase();
         const query = searchQuery.toLowerCase();
-        return tenantName.includes(query) || roomName.includes(query) || txId.includes(query);
+        return tenantName.includes(query) || txId.includes(query);
     });
 
     return (
@@ -83,7 +137,8 @@ const LandlordFinancials = () => {
                     </h2>
                     <p className="text-stone-500 mt-2 font-medium" style={{fontSize: isMobile ? '14px' : '18px'}}>Full historical audit of all cash flows and transactions.</p>
                 </div>
-                <div className={cn("flex gap-3", isMobile ? "w-full justify-center" : "")}>
+                <div className={cn("flex gap-3 flex-wrap", isMobile ? "w-full justify-center" : "")}>
+                    <ManualPaymentDialog onPaymentCreated={fetchFinancialData} />
                     <Button variant="outline" className={cn("rounded-2xl border-stone-100 p-0", isMobile ? "h-12 w-12" : "h-14 w-14")}>
                         <Filter className={cn("text-stone-400", isMobile ? "h-4 w-4" : "h-5 w-5")} />
                     </Button>
@@ -123,7 +178,7 @@ const LandlordFinancials = () => {
                     <div className="relative flex-1 max-w-sm">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-300" />
                         <Input
-                            placeholder="Search transaction ID, tenant or room..."
+                            placeholder="Search transaction ID or tenant..."
                             className={cn("pl-10 rounded-2xl border-stone-100 bg-white", isMobile ? "h-12" : "h-14")}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -158,11 +213,7 @@ const LandlordFinancials = () => {
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center">
                                             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Tenant</span>
-                                            <span className="font-bold text-stone-900 text-sm">{tx.profiles?.name || "Unknown Tenant"}</span>
-                                        </div>
-                                        <div className="flex justify-between items-center">
-                                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Unit</span>
-                                            <span className="font-bold text-stone-900 text-sm">{tx.tenancies?.rooms?.room_name || "N/A"}</span>
+                                            <span className="font-bold text-stone-900 text-sm">{tx.profiles?.name || "Unknown"}</span>
                                         </div>
                                         <div className="flex justify-between items-center">
                                             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Date</span>
@@ -171,7 +222,13 @@ const LandlordFinancials = () => {
                                         <div className="flex justify-between items-center">
                                             <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Type</span>
                                             <span className="text-[10px] font-bold text-stone-900 uppercase tracking-widest">
-                                                {tx.charge_id ? "Charge" : tx.application_id ? "Application" : "Rent"}
+                                                {getPaymentTypeLabel(tx)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Method</span>
+                                            <span className="text-[10px] font-bold text-stone-600 uppercase tracking-widest">
+                                                {getPaymentMethod(tx)}
                                             </span>
                                         </div>
                                         <div className="flex justify-between items-center pt-2 border-t border-stone-200">
@@ -179,6 +236,24 @@ const LandlordFinancials = () => {
                                             <span className="font-display font-bold text-stone-900 text-lg">₦{Number(tx.amount).toLocaleString()}</span>
                                         </div>
                                     </div>
+
+                                    {tx.status === "pending" && (
+                                        <Button
+                                            onClick={() => setConfirmDialog({ open: true, paymentId: tx.id })}
+                                            disabled={markingPaid === tx.id}
+                                            size="sm"
+                                            className="w-full mt-4 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] uppercase tracking-widest"
+                                        >
+                                            {markingPaid === tx.id ? (
+                                                <Loader2 className="h-3 w-3 animate-spin" />
+                                            ) : (
+                                                <>
+                                                    <CheckCircle2 className="h-3 w-3 mr-1" />
+                                                    Mark as Paid
+                                                </>
+                                            )}
+                                        </Button>
+                                    )}
                                 </div>
                             ))}
                             {filteredLedger.length === 0 && (
@@ -192,38 +267,42 @@ const LandlordFinancials = () => {
                         <table className="w-full text-left">
                             <thead>
                                 <tr className="bg-stone-50/50 border-b border-stone-100 text-stone-400 font-bold uppercase tracking-widest text-[10px]">
-                                    <th className="px-8 py-5">Transaction ID</th>
-                                    <th className="px-8 py-5">Resident / Unit</th>
-                                    <th className="px-8 py-5">Date</th>
-                                    <th className="px-8 py-5">Type</th>
-                                    <th className="px-8 py-5">Status</th>
-                                    <th className="px-8 py-5 text-right">Amount</th>
+                                    <th className="px-6 py-5">Transaction ID</th>
+                                    <th className="px-6 py-5">Tenant</th>
+                                    <th className="px-6 py-5">Date</th>
+                                    <th className="px-6 py-5">Type</th>
+                                    <th className="px-6 py-5">Method</th>
+                                    <th className="px-6 py-5">Status</th>
+                                    <th className="px-6 py-5 text-right">Amount</th>
+                                    <th className="px-6 py-5">Action</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-stone-50">
                                 {filteredLedger.map((tx) => (
                                     <tr key={tx.id} className="group hover:bg-stone-50/30 transition-colors">
-                                        <td className="px-8 py-6">
+                                        <td className="px-6 py-5">
                                             <div className="flex items-center gap-2">
                                                 <FileText className="h-4 w-4 text-stone-300" />
                                                 <span className="font-mono text-[10px] font-bold text-stone-400">{tx.id.slice(0, 8)}...</span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-6">
-                                            <div>
-                                                <p className="font-bold text-stone-900 text-sm tracking-tight">{tx.profiles?.name || "Unknown Tenant"}</p>
-                                                <p className="text-[10px] text-stone-400 font-bold uppercase tracking-widest">{tx.tenancies?.rooms?.room_name || "N/A"}</p>
-                                            </div>
+                                        <td className="px-6 py-5">
+                                            <p className="font-bold text-stone-900 text-sm tracking-tight">{tx.profiles?.name || "Unknown"}</p>
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-6 py-5">
                                             <span className="text-xs font-medium text-stone-500">{new Date(tx.created_at).toLocaleDateString()}</span>
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-6 py-5">
                                             <span className="text-[10px] font-bold text-stone-900 uppercase tracking-widest">
-                                                {tx.charge_id ? "Charge" : tx.application_id ? "Application" : "Rent"}
+                                                {getPaymentTypeLabel(tx)}
                                             </span>
                                         </td>
-                                        <td className="px-8 py-6">
+                                        <td className="px-6 py-5">
+                                            <span className="text-[10px] font-bold text-stone-600 uppercase tracking-widest">
+                                                {getPaymentMethod(tx)}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-5">
                                             <Badge className={cn(
                                                 "rounded-full px-3 py-1 font-bold uppercase tracking-widest text-[8px] border-none shadow-sm",
                                                 tx.status === "success" ? "bg-emerald-50 text-emerald-600" :
@@ -232,14 +311,34 @@ const LandlordFinancials = () => {
                                                 {tx.status}
                                             </Badge>
                                         </td>
-                                        <td className="px-8 py-6 text-right">
+                                        <td className="px-6 py-5 text-right">
                                             <span className="font-display font-bold text-stone-900">₦{Number(tx.amount).toLocaleString()}</span>
+                                        </td>
+                                        <td className="px-6 py-5">
+                                            {tx.status === "pending" && (
+                                                <Button
+                                                    onClick={() => setConfirmDialog({ open: true, paymentId: tx.id })}
+                                                    disabled={markingPaid === tx.id}
+                                                    size="sm"
+                                                    variant="outline"
+                                                    className="rounded-xl border-emerald-200 text-emerald-700 hover:bg-emerald-50 font-bold text-[9px] uppercase tracking-widest"
+                                                >
+                                                    {markingPaid === tx.id ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <CheckCircle2 className="h-3 w-3 mr-1" />
+                                                            Mark Paid
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))}
                                 {filteredLedger.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="px-8 py-20 text-center text-stone-400 font-medium italic">
+                                        <td colSpan={8} className="px-8 py-20 text-center text-stone-400 font-medium italic">
                                             No transactions found matching your criteria.
                                         </td>
                                     </tr>
@@ -249,6 +348,27 @@ const LandlordFinancials = () => {
                     )}
                 </div>
             </div>
+
+            {/* Confirm Mark as Paid Dialog */}
+            <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ open, paymentId: open ? confirmDialog.paymentId : null })}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Manual Payment</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to mark this payment as paid? This action will update the payment status and cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={() => confirmDialog.paymentId && handleMarkAsPaid(confirmDialog.paymentId)}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                        >
+                            Confirm Payment
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 };

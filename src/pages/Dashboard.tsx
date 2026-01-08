@@ -42,6 +42,8 @@ const Dashboard = () => {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [charges, setCharges] = useState<any[]>([]);
   const [landlordId, setLandlordId] = useState<string | null>(null);
+  const [payments, setPayments] = useState<any[]>([]);
+  const [payingItem, setPayingItem] = useState<string | null>(null);
 
   // Derived user stage for accurate Product Owner logic
   const userStage = tenancy
@@ -148,7 +150,7 @@ const Dashboard = () => {
           appResult.data?.find(a => a.status === "approved")?.rooms?.buildings?.id;
 
         if (activeBuildingId) {
-          const [annData, chargesData, landlordData] = await Promise.all([
+          const [annData, chargesData, landlordData, paymentsData] = await Promise.all([
             supabase
               .from("announcements")
               .select("*")
@@ -164,13 +166,19 @@ const Dashboard = () => {
               .select("id")
               .eq("role", "landlord")
               .limit(1)
-              .maybeSingle()
+              .maybeSingle(),
+            supabase
+              .from("payments")
+              .select("*")
+              .eq("user_id", user.id)
+              .order("created_at", { ascending: false })
           ]);
 
           if (isMounted) {
             setAnnouncements(annData.data || []);
             setCharges(chargesData.data || []);
             setLandlordId(landlordData.data?.id || null);
+            setPayments(paymentsData.data || []);
           }
         } else {
           // Fetch landlord even without a building context
@@ -207,37 +215,80 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const handlePayment = (application: any) => {
+  const handlePayment = async (paymentType: 'rent' | 'charge', application: any, charge?: any) => {
     const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
+    const amount = paymentType === 'rent' ? application.rooms.price : charge?.amount;
+    const itemId = paymentType === 'rent' ? 'rent' : charge?.id;
+    
+    setPayingItem(itemId);
+
+    // Create pending payment record in database first
+    const reference = `FLEX_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+    
+    const paymentData: any = {
+      user_id: user.id,
+      amount: amount,
+      paystack_reference: reference,
+      payment_type: paymentType,
+      status: 'pending',
+    };
+
+    if (paymentType === 'rent') {
+      paymentData.application_id = application.id;
+    } else if (charge) {
+      paymentData.charge_id = charge.id;
+    }
+
+    const { error: createError } = await supabase
+      .from("payments")
+      .insert(paymentData);
+
+    if (createError) {
+      console.error("Error creating payment:", createError);
+      toast.error("Failed to initiate payment");
+      setPayingItem(null);
+      return;
+    }
 
     // Check if Paystack script is loaded
     if (!(window as any).PaystackPop) {
       const script = document.createElement("script");
       script.src = "https://js.paystack.co/v1/inline.js";
       script.async = true;
-      script.onload = () => initiatePaystack(application, paystackKey);
+      script.onload = () => initiatePaystack(amount, reference, paystackKey, paymentType);
       document.body.appendChild(script);
     } else {
-      initiatePaystack(application, paystackKey);
+      initiatePaystack(amount, reference, paystackKey, paymentType);
     }
   };
 
-  const initiatePaystack = (application: any, key: string) => {
+  const initiatePaystack = (amount: number, reference: string, key: string, paymentType: string) => {
     const handler = (window as any).PaystackPop.setup({
       key: key,
       email: user.email,
-      amount: application.rooms.price * 100, // Paystack uses kobo
+      amount: amount * 100, // Paystack uses kobo
       currency: "NGN",
-      ref: `FLEX_${Math.floor(Math.random() * 1000000000 + 1)}`,
+      ref: reference,
       callback: (response: any) => {
-        toast.success("Payment successful! Synchronizing tenancy...");
-        navigate(`/dashboard/success?reference=${response.reference}`);
+        toast.success("Payment successful! Verifying...");
+        navigate(`/dashboard/success?reference=${response.reference}&type=${paymentType}`);
       },
       onClose: () => {
-        toast.info("Payment session adjourned.");
+        toast.info("Payment session closed.");
+        setPayingItem(null);
       },
     });
     handler.openIframe();
+  };
+
+  // Check if a specific charge has been paid
+  const isChargePaid = (chargeId: string) => {
+    return payments.some(p => p.charge_id === chargeId && p.status === 'success');
+  };
+
+  // Check if rent has been paid for the approved application
+  const isRentPaid = (applicationId: string) => {
+    return payments.some(p => p.application_id === applicationId && p.payment_type === 'rent' && p.status === 'success');
   };
 
   if (loading) {
@@ -522,14 +573,49 @@ const Dashboard = () => {
                             )}
 
                             {userStage === "approved" && charges.length > 0 && (
-                              <div className="space-y-3 mb-10 pt-8 border-t border-stone-100">
-                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Building Charges</p>
+                              <div className="space-y-4 mb-10 pt-8 border-t border-stone-100">
+                                {/* Rent Payment Section */}
+                                <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <span className="text-stone-900 font-bold">Annual Rent</span>
+                                    <span className="text-lg font-bold text-stone-900">₦{applications[0]?.rooms.price?.toLocaleString()}</span>
+                                  </div>
+                                  {isRentPaid(applications[0]?.id) ? (
+                                    <Badge className="bg-green-50 text-green-700 border-none text-[8px] tracking-widest font-bold uppercase">Paid</Badge>
+                                  ) : (
+                                    <Button
+                                      onClick={() => handlePayment('rent', applications[0])}
+                                      disabled={payingItem === 'rent'}
+                                      className="w-full mt-2 h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest"
+                                    >
+                                      {payingItem === 'rent' ? "Processing..." : "Pay Rent"}
+                                    </Button>
+                                  )}
+                                </div>
+
+                                {/* Charges Section */}
+                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-6">Building Charges</p>
                                 {charges.map(charge => (
-                                  <div key={charge.id} className="flex justify-between items-center text-sm">
-                                    <span className="text-stone-500 font-medium">{charge.name}</span>
-                                    <span className="text-stone-900 font-bold">₦{charge.amount.toLocaleString()}</span>
+                                  <div key={charge.id} className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-stone-500 font-medium">{charge.name}</span>
+                                      <span className="text-stone-900 font-bold">₦{charge.amount.toLocaleString()}</span>
+                                    </div>
+                                    {isChargePaid(charge.id) ? (
+                                      <Badge className="bg-green-50 text-green-700 border-none text-[8px] tracking-widest font-bold uppercase">Paid</Badge>
+                                    ) : (
+                                      <Button
+                                        onClick={() => handlePayment('charge', applications[0], charge)}
+                                        disabled={payingItem === charge.id}
+                                        variant="outline"
+                                        className="w-full mt-2 h-10 rounded-xl border-stone-200 font-bold text-xs uppercase tracking-widest"
+                                      >
+                                        {payingItem === charge.id ? "Processing..." : `Pay ${charge.name}`}
+                                      </Button>
+                                    )}
                                   </div>
                                 ))}
+                                
                                 <div className="pt-3 mt-3 border-t border-stone-200/50 flex justify-between items-center">
                                   <span className="text-[10px] font-bold text-stone-900 uppercase">Total Initial Payment</span>
                                   <span className="text-lg font-bold text-primary">
@@ -539,14 +625,29 @@ const Dashboard = () => {
                               </div>
                             )}
 
-                            {userStage === "approved" ? (
-                              <Button
-                                onClick={() => handlePayment(applications[0])}
-                                className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-white font-bold text-lg shadow-xl shadow-primary/20 transition-all hover:-translate-y-1"
-                              >
-                                Secure My Suite
-                              </Button>
-                            ) : (
+                            {userStage === "approved" && charges.length === 0 && (
+                              <div className="space-y-4 mb-10 pt-8 border-t border-stone-100">
+                                <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                                  <div className="flex justify-between items-center mb-2">
+                                    <span className="text-stone-900 font-bold">Annual Rent</span>
+                                    <span className="text-lg font-bold text-stone-900">₦{applications[0]?.rooms.price?.toLocaleString()}</span>
+                                  </div>
+                                  {isRentPaid(applications[0]?.id) ? (
+                                    <Badge className="bg-green-50 text-green-700 border-none text-[8px] tracking-widest font-bold uppercase">Paid</Badge>
+                                  ) : (
+                                    <Button
+                                      onClick={() => handlePayment('rent', applications[0])}
+                                      disabled={payingItem === 'rent'}
+                                      className="w-full mt-2 h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest"
+                                    >
+                                      {payingItem === 'rent' ? "Processing..." : "Pay Rent"}
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
+                            {userStage === "pending" && (
                               <div className="space-y-4">
                                 <Button variant="outline" className="w-full h-14 rounded-2xl border-stone-100 text-stone-500 font-bold uppercase tracking-widest text-[10px] cursor-default bg-stone-50/50">
                                   <span>Waiting for Official Approval</span>

@@ -274,13 +274,17 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          manual_confirmation_by: string | null
+          notes: string | null
           paid_at: string | null
           payment_method: string | null
+          payment_type: Database["public"]["Enums"]["payment_type"]
           paystack_reference: string
           status: Database["public"]["Enums"]["payment_status"]
           tenancy_id: string | null
           updated_at: string
           user_id: string
+          verified_at: string | null
         }
         Insert: {
           amount: number
@@ -289,13 +293,17 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          manual_confirmation_by?: string | null
+          notes?: string | null
           paid_at?: string | null
           payment_method?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_type"]
           paystack_reference: string
           status?: Database["public"]["Enums"]["payment_status"]
           tenancy_id?: string | null
           updated_at?: string
           user_id: string
+          verified_at?: string | null
         }
         Update: {
           amount?: number
@@ -304,13 +312,17 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          manual_confirmation_by?: string | null
+          notes?: string | null
           paid_at?: string | null
           payment_method?: string | null
+          payment_type?: Database["public"]["Enums"]["payment_type"]
           paystack_reference?: string
           status?: Database["public"]["Enums"]["payment_status"]
           tenancy_id?: string | null
           updated_at?: string
           user_id?: string
+          verified_at?: string | null
         }
         Relationships: [
           {
@@ -325,6 +337,13 @@ export type Database = {
             columns: ["charge_id"]
             isOneToOne: false
             referencedRelation: "charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_manual_confirmation_by_fkey"
+            columns: ["manual_confirmation_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
           {
@@ -554,6 +573,7 @@ export type Database = {
       building_status: "active" | "inactive"
       charge_frequency: "monthly" | "yearly"
       payment_status: "pending" | "success" | "failed" | "expired"
+      payment_type: "rent" | "charge" | "manual"
       room_gender: "male" | "female" | "any"
       room_status: "available" | "pending" | "occupied"
       tenancy_status: "active" | "archived"
@@ -690,6 +710,7 @@ export const Constants = {
       building_status: ["active", "inactive"],
       charge_frequency: ["monthly", "yearly"],
       payment_status: ["pending", "success", "failed", "expired"],
+      payment_type: ["rent", "charge", "manual"],
       room_gender: ["male", "female", "any"],
       room_status: ["available", "pending", "occupied"],
       tenancy_status: ["active", "archived"],
