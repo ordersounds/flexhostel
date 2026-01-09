@@ -35,11 +35,15 @@ const AgentsManagement = () => {
             // Get comprehensive data for each agent
             const agentsWithStats = await Promise.all(
                 agentData.map(async (agent) => {
-                    // Get buildings assigned to agent
-                    const { data: buildings } = await supabase
+                    // Get buildings assigned to agent - use raw query approach
+                    const buildingsResult = await supabase
                         .from("buildings")
-                        .select("id, name")
-                        .eq("agent_id", agent.id);
+                        .select("id, name");
+                    
+                    // Filter in JS since agent_id column is new
+                    const buildings = (buildingsResult.data || []).filter(
+                        (b: any) => (b as any).agent_id === agent.id
+                    );
 
                     // Get rooms assigned to agent (either directly or through buildings)
                     const { data: rooms } = await supabase
@@ -50,15 +54,17 @@ const AgentsManagement = () => {
                         `)
                         .eq("agent_id", agent.id);
 
-                    const buildingIds = buildings?.map(b => b.id) || [];
-                    const { data: buildingRooms } = await supabase
-                        .from("rooms")
-                        .select(`
-                            id, price, status, building_id,
-                            buildings(name)
-                        `)
-                        .in("building_id", buildingIds)
-                        .is("agent_id", null); // Rooms assigned at building level
+                    const buildingIds = buildings?.map((b: any) => b.id) || [];
+                    const { data: buildingRooms } = buildingIds.length > 0 
+                        ? await supabase
+                            .from("rooms")
+                            .select(`
+                                id, price, status, building_id,
+                                buildings(name)
+                            `)
+                            .in("building_id", buildingIds)
+                            .is("agent_id", null)
+                        : { data: [] };
 
                     const allRooms = [...(rooms || []), ...(buildingRooms || [])];
                     const portfolioValue = allRooms.reduce((sum, room) => sum + (Number(room.price) || 0), 0);

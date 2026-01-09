@@ -126,8 +126,11 @@ export type Database = {
       buildings: {
         Row: {
           address: string
+          agent_id: string | null
           cover_image_url: string | null
           created_at: string
+          default_amenities: Json | null
+          default_price: number | null
           description: string | null
           gallery_images: Json | null
           id: string
@@ -139,8 +142,11 @@ export type Database = {
         }
         Insert: {
           address: string
+          agent_id?: string | null
           cover_image_url?: string | null
           created_at?: string
+          default_amenities?: Json | null
+          default_price?: number | null
           description?: string | null
           gallery_images?: Json | null
           id?: string
@@ -152,8 +158,11 @@ export type Database = {
         }
         Update: {
           address?: string
+          agent_id?: string | null
           cover_image_url?: string | null
           created_at?: string
+          default_amenities?: Json | null
+          default_price?: number | null
           description?: string | null
           gallery_images?: Json | null
           id?: string
@@ -164,6 +173,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "buildings_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "buildings_landlord_id_fkey"
             columns: ["landlord_id"]
@@ -566,6 +582,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      update_building_rooms_defaults: {
+        Args: {
+          building_id_param: string
+          new_agent_id_param?: string
+          new_amenities_param?: Json
+          new_price_param?: number
+        }
+        Returns: {
+          error_message: string
+          rooms_updated: number
+        }[]
       }
     }
     Enums: {

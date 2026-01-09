@@ -65,7 +65,7 @@ const AssignAgentDialog = ({
             // Update building with new agent
             const { error: buildingError } = await supabase
                 .from("buildings")
-                .update({ agent_id: selectedAgentId || null })
+                .update({ agent_id: selectedAgentId || null } as any)
                 .eq("id", buildingId);
 
             if (buildingError) throw buildingError;
