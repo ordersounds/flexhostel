@@ -128,6 +128,8 @@ export type Database = {
           address: string
           cover_image_url: string | null
           created_at: string
+          default_amenities: Json | null
+          default_price: number | null
           description: string | null
           gallery_images: Json | null
           id: string
@@ -141,6 +143,8 @@ export type Database = {
           address: string
           cover_image_url?: string | null
           created_at?: string
+          default_amenities?: Json | null
+          default_price?: number | null
           description?: string | null
           gallery_images?: Json | null
           id?: string
@@ -154,6 +158,8 @@ export type Database = {
           address?: string
           cover_image_url?: string | null
           created_at?: string
+          default_amenities?: Json | null
+          default_price?: number | null
           description?: string | null
           gallery_images?: Json | null
           id?: string
@@ -566,6 +572,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      update_building_rooms_defaults: {
+        Args: {
+          building_id_param: string
+          new_price_param: number | null
+          new_amenities_param: Json | null
+          new_agent_id_param: string | null
+        }
+        Returns: {
+          rooms_updated: number
+          error_message: string | null
+        }[]
       }
     }
     Enums: {
