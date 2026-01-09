@@ -6,8 +6,10 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, Check, Upload, User, School, Users, DoorOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Upload, User, School, Users, DoorOpen, FileText, Image as ImageIcon } from "lucide-react";
 import roomInterior from "@/assets/room-interior.jpg";
+import DocumentUpload from "@/components/ui/document-upload";
+import ImageUpload from "@/components/ui/image-upload";
 
 const steps = [
   { id: 1, name: "Personal", icon: User },
@@ -23,7 +25,7 @@ const ApplicationForm = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [resolvedRoomId, setResolvedRoomId] = useState<string | null>(null);
-  const [roomMeta, setRoomMeta] = useState<{ room_name: string; building_slug: string } | null>(null);
+  const [roomMeta, setRoomMeta] = useState<{ room_name: string; building_slug: string; price?: number } | null>(null);
 
   const displayRoomName = roomMeta?.room_name || "Selected suite";
   const cancelHref = roomId
@@ -35,12 +37,14 @@ const ApplicationForm = () => {
       name: "",
       email: "",
       phone: "",
+      photoUrl: "",
     },
     school: {
-      institution: "",
+      institution: "OAUSTECH",
       faculty: "",
       department: "",
       matricNumber: "",
+      level: "",
     },
     roommate: {
       hasRoommate: false,
@@ -54,6 +58,10 @@ const ApplicationForm = () => {
       hasPets: false,
       petDescription: "",
       notes: "",
+    },
+    documents: {
+      studentId: "",
+      studentAffairsClearance: "",
     },
   });
 
@@ -78,7 +86,7 @@ const ApplicationForm = () => {
 
       const { data, error } = await supabase
         .from("rooms")
-        .select(`id, room_name, buildings ( slug )`)
+        .select(`id, room_name, price, buildings ( slug )`)
         .eq("id", roomId)
         .maybeSingle();
 
@@ -93,6 +101,7 @@ const ApplicationForm = () => {
       setRoomMeta({
         room_name: data.room_name,
         building_slug: (data as any).buildings?.slug || "okitipupa",
+        price: data.price || 450000,
       });
       setLoading(false);
     };
@@ -129,6 +138,7 @@ const ApplicationForm = () => {
     setLoading(true);
 
     try {
+      // Submit application
       const { error } = await supabase.from("applications").insert({
         user_id: user.id,
         room_id: resolvedRoomId,
@@ -137,6 +147,19 @@ const ApplicationForm = () => {
       });
 
       if (error) throw error;
+
+      // Update profile photo if uploaded
+      if (formData.personal.photoUrl) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ photo_url: formData.personal.photoUrl })
+          .eq("id", user.id);
+
+        if (profileError) {
+          console.error("Failed to update profile photo:", profileError);
+          // Don't throw error as application submission is more important
+        }
+      }
 
       toast.success("Application submitted successfully!");
       navigate("/dashboard");
@@ -168,7 +191,7 @@ const ApplicationForm = () => {
 
           <div className="grid lg:grid-cols-12 gap-8 md:gap-12">
 
-            {/* Mobile Summary Section (Top on mobile, hidden on desktop sidebar) */}
+          {/* Mobile Summary Section (Top on mobile, hidden on desktop sidebar) */}
             <div className="lg:hidden animate-reveal-up delay-75">
               <div className="bg-white rounded-3xl p-6 border border-stone-100 shadow-sm flex items-center gap-4">
                 <div className="h-16 w-16 shrink-0 rounded-2xl overflow-hidden border border-stone-100">
@@ -176,7 +199,7 @@ const ApplicationForm = () => {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400">Selected Suite</p>
-                  <h3 className="text-base font-bold text-stone-900 tracking-tight">{displayRoomName} — ₦450,000/yr</h3>
+                  <h3 className="text-base font-bold text-stone-900 tracking-tight">{displayRoomName} — ₦{roomMeta?.price?.toLocaleString() || '450,000'}/yr</h3>
                 </div>
               </div>
             </div>
@@ -302,6 +325,19 @@ const ApplicationForm = () => {
                           placeholder="+234 800 000 0000"
                         />
                       </div>
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-2 md:ml-4">Profile Photo</label>
+                        <ImageUpload
+                          value={formData.personal.photoUrl}
+                          onChange={(url) => setFormData({
+                            ...formData,
+                            personal: { ...formData.personal, photoUrl: url }
+                          })}
+                          placeholder="Upload your photo"
+                          bucket="profile-images"
+                          folder="applicants"
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
@@ -353,6 +389,24 @@ const ApplicationForm = () => {
                           className="w-full h-14 px-6 rounded-2xl border border-stone-100 bg-stone-50 text-stone-900 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium"
                           placeholder="Computer Science"
                         />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-2 md:ml-4">Level</label>
+                        <select
+                          value={formData.school.level}
+                          onChange={(e) => setFormData({
+                            ...formData,
+                            school: { ...formData.school, level: e.target.value }
+                          })}
+                          className="w-full h-14 px-6 rounded-2xl border border-stone-100 bg-stone-50 text-stone-900 text-sm focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all font-medium appearance-none"
+                        >
+                          <option value="">Select Level</option>
+                          <option value="100">100 Level</option>
+                          <option value="200">200 Level</option>
+                          <option value="300">300 Level</option>
+                          <option value="400">400 Level</option>
+                          <option value="500">500 Level</option>
+                        </select>
                       </div>
                       <div className="md:col-span-2 space-y-2">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-2 md:ml-4">Matric / Student ID</label>
@@ -424,6 +478,34 @@ const ApplicationForm = () => {
                         </div>
                       )}
 
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-4">Student ID Upload</label>
+                          <DocumentUpload
+                            value={formData.documents.studentId}
+                            onChange={(url) => setFormData({
+                              ...formData,
+                              documents: { ...formData.documents, studentId: url }
+                            })}
+                            placeholder="Upload Student ID"
+                            folder="student-ids"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-4">Student Affairs Clearance</label>
+                          <DocumentUpload
+                            value={formData.documents.studentAffairsClearance}
+                            onChange={(url) => setFormData({
+                              ...formData,
+                              documents: { ...formData.documents, studentAffairsClearance: url }
+                            })}
+                            placeholder="Upload Student Affairs Clearance"
+                            folder="clearance-docs"
+                          />
+                        </div>
+                      </div>
+
                       <div className="space-y-2">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-4">Additional Notes</label>
                         <textarea
@@ -460,6 +542,28 @@ const ApplicationForm = () => {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100 md:col-span-2">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Profile Photo</p>
+                          {formData.personal.photoUrl ? (
+                            <div className="flex items-center gap-4">
+                              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-primary">
+                                <img
+                                  src={formData.personal.photoUrl}
+                                  alt="Profile Photo"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <p className="text-sm text-stone-500">Photo uploaded successfully</p>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-4">
+                              <div className="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center border-2 border-stone-200">
+                                <ImageIcon className="h-8 w-8 text-stone-400" />
+                              </div>
+                              <p className="text-sm text-stone-500">No photo uploaded</p>
+                            </div>
+                          )}
+                        </div>
                         <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Contact Details</p>
                           <p className="text-sm font-bold text-stone-900">{formData.personal.name}</p>
@@ -469,10 +573,31 @@ const ApplicationForm = () => {
                           <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Academic Profile</p>
                           <p className="text-sm font-bold text-stone-900 truncate">{formData.school.institution || "Not specified"}</p>
                           <p className="text-xs text-stone-500 mt-1">{formData.school.faculty} • {formData.school.department}</p>
+                          {formData.school.level && (
+                            <p className="text-xs text-stone-500 mt-1">{formData.school.level} Level</p>
+                          )}
                         </div>
                         <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Matric / Student ID</p>
                           <p className="text-sm font-bold text-stone-900">{formData.school.matricNumber || "Pending Verification"}</p>
+                        </div>
+                        <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Documents</p>
+                          <div className="space-y-1">
+                            {formData.documents.studentId && (
+                              <p className="text-xs text-stone-500 flex items-center gap-1">
+                                <FileText className="h-3 w-3" /> Student ID uploaded
+                              </p>
+                            )}
+                            {formData.documents.studentAffairsClearance && (
+                              <p className="text-xs text-stone-500 flex items-center gap-1">
+                                <FileText className="h-3 w-3" /> Clearance uploaded
+                              </p>
+                            )}
+                            {!formData.documents.studentId && !formData.documents.studentAffairsClearance && (
+                              <p className="text-xs text-stone-500">Documents pending</p>
+                            )}
+                          </div>
                         </div>
                         <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Living Preference</p>
@@ -556,7 +681,7 @@ const ApplicationForm = () => {
 
                   <div className="p-6 bg-stone-50 rounded-2xl mt-4">
                     <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Annual Investment</p>
-                    <p className="text-2xl font-black text-stone-900 tracking-tighter">₦450,000</p>
+                    <p className="text-2xl font-black text-stone-900 tracking-tighter">₦{roomMeta?.price?.toLocaleString() || '450,000'}</p>
                   </div>
                 </div>
               </div>

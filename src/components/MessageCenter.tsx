@@ -29,13 +29,23 @@ const MessageCenter = ({ userId, buildingId, agentId, landlordId }: MessageCente
 
     const availableChannels = channels.filter(c => c.available);
 
-    // Set first available channel if current is not available
-    useEffect(() => {
-        const currentAvailable = channels.find(c => c.id === activeChannel)?.available;
-        if (!currentAvailable && availableChannels.length > 0) {
-            setActiveChannel(availableChannels[0].id);
-        }
-    }, [buildingId, agentId, landlordId]);
+  // Set first available channel if current is not available
+  useEffect(() => {
+    const currentAvailable = channels.find(c => c.id === activeChannel)?.available;
+    if (!currentAvailable && availableChannels.length > 0) {
+      setActiveChannel(availableChannels[0].id);
+    }
+  }, [buildingId, agentId, landlordId]);
+
+  // Check for intended channel from localStorage when component mounts
+  useEffect(() => {
+    const intendedChannel = localStorage.getItem('flexhostel-intended-channel');
+    if (intendedChannel && availableChannels.some(c => c.id === intendedChannel)) {
+      setActiveChannel(intendedChannel as ChannelType);
+      // Clear the intended channel after using it
+      localStorage.removeItem('flexhostel-intended-channel');
+    }
+  }, [availableChannels]);
 
     useEffect(() => {
         const fetchMessages = async () => {

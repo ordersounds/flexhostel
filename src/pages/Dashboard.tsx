@@ -462,6 +462,52 @@ const Dashboard = () => {
                             Full Ledger <ArrowRight className="h-4 w-4 ml-2" />
                           </Button>
                         </div>
+
+                        {/* Show charges for tenants - Enhanced Design */}
+                        {charges.length > 0 && (
+                          <div className="mt-8 pt-8 border-t border-white/10">
+                            <div className="flex items-center gap-2 mb-6">
+                              <CreditCard className="h-4 w-4 text-primary" />
+                              <h4 className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Current Building Charges</h4>
+                            </div>
+                            <div className="space-y-3">
+                              {charges.map(charge => (
+                                <div key={charge.id} className="group">
+                                  <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10 group-hover:border-primary/20 transition-all">
+                                    <div className="flex-1">
+                                      <p className="font-bold text-white group-hover:text-primary transition-colors">{charge.name}</p>
+                                      <p className="text-white/60 text-sm mt-0.5">₦{charge.amount.toLocaleString()} • {charge.frequency}</p>
+                                    </div>
+                                    {isChargePaid(charge.id) ? (
+                                      <Badge className="bg-green-500/20 text-green-300 border border-green-500/30 text-[8px] tracking-widest font-bold uppercase px-3 py-1">
+                                        <CheckCircle className="h-3 w-3 mr-1" /> Paid
+                                      </Badge>
+                                    ) : (
+                                      <Button
+                                        onClick={() => handlePayment('charge', applications[0] || {}, charge)}
+                                        disabled={payingItem === charge.id}
+                                        size="sm"
+                                        className="bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest px-4 py-2 transition-all"
+                                      >
+                                        {payingItem === charge.id ? (
+                                          <>
+                                            <span className="h-2 w-2 border border-white border-t-transparent rounded-full animate-spin inline-block mr-2" />
+                                            Processing...
+                                          </>
+                                        ) : (
+                                          <>
+                                            <ArrowUpRight className="h-3 w-3 mr-1" />
+                                            Pay Now
+                                          </>
+                                        )}
+                                      </Button>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -489,8 +535,12 @@ const Dashboard = () => {
                           </div>
                         </div>
 
-                        <Button className="w-full rounded-2xl bg-stone-50 border border-stone-100 text-stone-900 hover:bg-stone-100 font-bold h-12 uppercase tracking-widest text-[10px]" onClick={() => handleTabChange("messages")}>
-                          Open Conversation
+                        <Button className="w-full rounded-2xl bg-stone-50 border border-stone-100 text-stone-900 hover:bg-stone-100 font-bold h-12 uppercase tracking-widest text-[10px]" onClick={() => {
+                          handleTabChange("messages");
+                          // Store the intended channel in localStorage so MessageCenter can pick it up
+                          localStorage.setItem('flexhostel-intended-channel', 'agent');
+                        }}>
+                          <MessageSquare className="h-4 w-4 mr-2" /> Open Conversation
                         </Button>
                       </div>
 
@@ -783,34 +833,150 @@ const Dashboard = () => {
 
             {activeTab === "payments" && (
               <div className="space-y-12 animate-in fade-in slide-in-from-bottom-5 duration-500">
-                <div className="bg-white rounded-[2.5rem] p-12 border border-stone-100 shadow-xl overflow-hidden relative">
+                <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border border-stone-100 shadow-xl overflow-hidden relative">
                   <div className="relative z-10">
-                    <div className="flex flex-col md:flex-row justify-between items-center gap-8 mb-12 pb-12 border-b border-stone-100">
+                    {/* Header Section */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12 pb-8 border-b border-stone-100">
                       <div>
-                        <h2 className="font-display text-5xl font-bold text-stone-900 tracking-tighter mb-2">Financial Ledger</h2>
+                        <h2 className="font-display text-4xl md:text-5xl font-bold text-stone-900 tracking-tighter mb-2">Financial Ledger</h2>
                         <p className="text-stone-500 font-medium">Your complete transaction and billing history.</p>
                       </div>
-                      <div className="bg-green-50 px-6 py-4 rounded-3xl border border-green-100 text-center">
-                        <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-1">Status</p>
-                        <p className="text-lg font-bold text-green-800">Account Balanced</p>
+                      <div className="flex items-center gap-4">
+                        <div className="bg-green-50 px-4 py-3 rounded-2xl border border-green-100 text-center min-w-[120px]">
+                          <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-1">Status</p>
+                          <p className="text-sm font-bold text-green-800">Account Balanced</p>
+                        </div>
+                        <Button variant="outline" size="sm" className="border-stone-200 text-stone-600 hover:bg-stone-50">
+                          <ArrowUpRight className="h-4 w-4 mr-2" /> Export
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="space-y-4">
-                      {tenancy ? (
-                        <div className="p-12 text-center border-2 border-dashed border-stone-100 rounded-[2rem] bg-stone-50/30">
-                          <CreditCard className="h-12 w-12 text-stone-200 mx-auto mb-4" />
-                          <p className="text-stone-500 font-bold uppercase tracking-widest text-[10px]">No Outstanding Charges</p>
-                          <p className="text-stone-400 text-sm mt-2">Your next billing cycle starts in {new Date(tenancy.end_date).toLocaleDateString()}.</p>
+                    {/* Outstanding Charges Section */}
+                    {tenancy ? (
+                      <div className="space-y-10">
+                        {/* Outstanding Charges */}
+                        <div className="space-y-6">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-2 bg-primary rounded-full" />
+                            <h3 className="font-display text-2xl font-bold text-stone-900">Outstanding Charges</h3>
+                            {charges.length > 0 && (
+                              <Badge className="bg-amber-50 text-amber-700 border border-amber-100 text-[9px] font-bold uppercase tracking-widest px-2 py-1">
+                                {charges.filter(c => !isChargePaid(c.id)).length} Pending
+                              </Badge>
+                            )}
+                          </div>
+
+                          {charges.length > 0 ? (
+                            <div className="space-y-4">
+                              {charges.map(charge => (
+                                <div key={charge.id} className="group">
+                                  <div className="flex flex-col md:flex-row justify-between items-center gap-4 p-5 bg-stone-50 rounded-2xl border border-stone-100 group-hover:border-primary/20 transition-all">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-3 mb-1">
+                                        <CreditCard className="h-5 w-5 text-stone-400 group-hover:text-primary transition-colors" />
+                                        <div className="min-w-0">
+                                          <p className="font-bold text-stone-900 truncate group-hover:text-primary transition-colors">{charge.name}</p>
+                                          <p className="text-stone-500 text-sm truncate">₦{charge.amount.toLocaleString()} • {charge.frequency}</p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex-shrink-0">
+                                      {isChargePaid(charge.id) ? (
+                                        <Badge className="bg-green-50 text-green-700 border border-green-100 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5">
+                                          <CheckCircle className="h-3.5 w-3.5 mr-1" /> Paid
+                                        </Badge>
+                                      ) : (
+                                        <Button
+                                          onClick={() => handlePayment('charge', applications[0] || {}, charge)}
+                                          disabled={payingItem === charge.id}
+                                          className="h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest px-4 transition-all"
+                                        >
+                                          {payingItem === charge.id ? (
+                                            <>
+                                              <span className="h-2 w-2 border border-white border-t-transparent rounded-full animate-spin inline-block mr-2" />
+                                              Processing...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
+                                              Pay Now
+                                            </>
+                                          )}
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center border-2 border-dashed border-stone-100 rounded-2xl bg-stone-50/50">
+                              <CreditCard className="h-8 w-8 text-stone-200 mx-auto mb-3" />
+                              <p className="text-stone-500 font-bold uppercase tracking-widest text-[10px] mb-1">No Outstanding Charges</p>
+                              <p className="text-stone-400 text-sm">Your next billing cycle starts in {new Date(tenancy.end_date).toLocaleDateString()}.</p>
+                            </div>
+                          )}
                         </div>
-                      ) : (
-                        <div className="p-12 text-center border-2 border-dashed border-stone-100 rounded-[2rem] bg-stone-50/30">
-                          <CreditCard className="h-12 w-12 text-stone-200 mx-auto mb-4" />
-                          <p className="text-stone-500 font-bold uppercase tracking-widest text-[10px]">Portal Locked</p>
-                          <p className="text-stone-400 text-sm mt-2">The financial ledger becomes active once you secure your suite.</p>
+
+                        {/* Payment History Section */}
+                        <div className="space-y-6 pt-8 border-t border-stone-100">
+                          <div className="flex items-center gap-3">
+                            <div className="h-8 w-2 bg-stone-300 rounded-full" />
+                            <h3 className="font-display text-2xl font-bold text-stone-900">Payment History</h3>
+                          </div>
+
+                          {payments.length > 0 ? (
+                            <div className="space-y-4">
+                              {payments
+                                .filter(p => p.status === 'success')
+                                .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                                .map(payment => (
+                                  <div key={payment.id} className="p-5 bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-md transition-all">
+                                    <div className="flex justify-between items-start gap-4">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-3 mb-2">
+                                          {payment.payment_type === 'rent' ? (
+                                            <Building2 className="h-5 w-5 text-primary" />
+                                          ) : (
+                                            <CreditCard className="h-5 w-5 text-stone-400" />
+                                          )}
+                                          <div>
+                                            <p className="font-bold text-stone-900 capitalize">
+                                              {payment.payment_type} Payment
+                                            </p>
+                                            <p className="text-stone-500 text-xs">
+                                              {new Date(payment.created_at).toLocaleString()} • {payment.paystack_reference}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-lg font-bold text-stone-900">₦{payment.amount.toLocaleString()}</p>
+                                        <Badge className="bg-green-50 text-green-700 border border-green-100 text-[8px] font-bold uppercase tracking-widest px-2 py-1 mt-1">
+                                          <CheckCircle className="h-3 w-3 mr-1" /> Success
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
+                            </div>
+                          ) : (
+                            <div className="p-8 text-center border-2 border-dashed border-stone-100 rounded-2xl bg-stone-50/50">
+                              <Clock className="h-8 w-8 text-stone-200 mx-auto mb-3" />
+                              <p className="text-stone-500 font-bold uppercase tracking-widest text-[10px] mb-1">No Payment History</p>
+                              <p className="text-stone-400 text-sm">Your payment transactions will appear here.</p>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      <div className="p-12 text-center border-2 border-dashed border-stone-100 rounded-[2rem] bg-stone-50/30">
+                        <CreditCard className="h-12 w-12 text-stone-200 mx-auto mb-4" />
+                        <p className="text-stone-500 font-bold uppercase tracking-widest text-[10px]">Portal Locked</p>
+                        <p className="text-stone-400 text-sm mt-2">The financial ledger becomes active once you secure your suite.</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
