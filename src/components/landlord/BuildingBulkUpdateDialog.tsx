@@ -118,7 +118,7 @@ const BuildingBulkUpdateDialog = ({
                     default_price: formData.price ? Number(formData.price) : null,
                     default_amenities: amenitiesArray.length > 0 ? amenitiesArray : null,
                     agent_id: formData.agent_id || null
-                })
+                } as any)
                 .eq("id", buildingId);
 
             toast.success(
