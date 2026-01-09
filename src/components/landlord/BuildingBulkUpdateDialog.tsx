@@ -269,12 +269,12 @@ const BuildingBulkUpdateDialog = ({
                                 <Label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest ml-1">Building Agent</Label>
                                 <div className="relative group">
                                     <Shield className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-stone-300 group-focus-within:text-primary transition-colors z-10" />
-                                    <Select value={formData.agent_id} onValueChange={(value) => setFormData({ ...formData, agent_id: value })}>
+                                    <Select value={formData.agent_id || "none"} onValueChange={(value) => setFormData({ ...formData, agent_id: value === "none" ? "" : value })}>
                                         <SelectTrigger className="pl-12 h-14 rounded-2xl border-stone-100 bg-stone-50/50 focus:bg-white transition-all shadow-inner">
                                             <SelectValue placeholder="Choose an agent..." />
                                         </SelectTrigger>
                                         <SelectContent>
-                                            <SelectItem value="">No Agent Assigned</SelectItem>
+                                            <SelectItem value="none">No Agent Assigned</SelectItem>
                                             {agents.map(agent => (
                                                 <SelectItem key={agent.id} value={agent.id}>
                                                     {agent.name}
