@@ -21,8 +21,8 @@ const DocumentUpload = ({
     onChange,
     className,
     placeholder = "Click to upload document",
-    bucket = "documents",
-    folder = "applications",
+    bucket = "images",
+    folder = "documents",
     fileTypes = ["application/pdf", "image/jpeg", "image/png"],
     maxSizeMB = 5
 }: DocumentUploadProps) => {

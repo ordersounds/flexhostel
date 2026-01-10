@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Clock, CheckCircle, XCircle, ChevronRight, User, School, Users, Eye } from "lucide-react";
+import { Clock, CheckCircle, XCircle, ChevronRight, User, School, Users, Eye, FileText, Image as ImageIcon, Phone, Mail, GraduationCap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -117,7 +117,7 @@ const ApplicationCenter = () => {
                                                 <Eye className="h-4 w-4 mr-2" /> View Details
                                             </Button>
                                         </DialogTrigger>
-                                        <DialogContent className="max-w-sm mx-4 bg-white backdrop-blur-3xl rounded-[2rem] border-stone-100 p-0 overflow-hidden shadow-2xl flex flex-col max-h-[90vh] outline-none">
+                                        <DialogContent className="max-w-sm mx-auto bg-white backdrop-blur-3xl rounded-[2rem] border-stone-100 p-0 overflow-hidden shadow-2xl flex flex-col max-h-[90vh] outline-none">
                                             <div className="h-32 bg-stone-900 relative flex-shrink-0">
                                                 <div className="absolute inset-0 opacity-20">
                                                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,255,255,0.2),transparent_70%)]" />
@@ -159,6 +159,10 @@ const ApplicationCenter = () => {
                                                                 </p>
                                                             </div>
                                                             <div>
+                                                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">Level</p>
+                                                                <p className="text-sm font-medium text-stone-900">{app.submitted_data?.school?.level || "N/A"} Level</p>
+                                                            </div>
+                                                            <div>
                                                                 <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">Matric Number</p>
                                                                 <p className="text-sm font-mono font-medium text-stone-900">{app.submitted_data?.school?.matricNumber || "N/A"}</p>
                                                             </div>
@@ -185,6 +189,65 @@ const ApplicationCenter = () => {
                                                             </div>
                                                         </div>
                                                     )}
+
+                                                    {/* Personal Details */}
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <div className="h-6 w-6 rounded-full bg-stone-100 flex items-center justify-center text-stone-500">
+                                                                <User className="h-3 w-3" />
+                                                            </div>
+                                                            <h5 className="text-sm font-bold text-stone-900">Personal Details</h5>
+                                                        </div>
+
+                                                        <div className="pl-8 space-y-3">
+                                                            <div>
+                                                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">Phone Number</p>
+                                                                <p className="text-sm font-medium text-stone-900">{app.applicant?.phone_number || app.submitted_data?.personal?.phone || "N/A"}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mb-1">Email Address</p>
+                                                                <p className="text-sm font-medium text-stone-900">{app.applicant?.email || "N/A"}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Documents */}
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-4">
+                                                            <div className="h-6 w-6 rounded-full bg-stone-100 flex items-center justify-center text-stone-500">
+                                                                <FileText className="h-3 w-3" />
+                                                            </div>
+                                                            <h5 className="text-sm font-bold text-stone-900">Supporting Documents</h5>
+                                                        </div>
+
+                                                        <div className="pl-8 space-y-3">
+                                                            {app.submitted_data?.documents?.studentId && (
+                                                                <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.documents.studentId, '_blank')}>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <FileText className="h-4 w-4 text-primary" />
+                                                                        <div>
+                                                                            <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Student ID</p>
+                                                                            <p className="text-xs font-medium text-primary">Click to view document</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {app.submitted_data?.documents?.studentAffairsClearance && (
+                                                                <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.documents.studentAffairsClearance, '_blank')}>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <FileText className="h-4 w-4 text-primary" />
+                                                                        <div>
+                                                                            <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">Clearance Certificate</p>
+                                                                            <p className="text-xs font-medium text-primary">Click to view document</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            {!app.submitted_data?.documents?.studentId && !app.submitted_data?.documents?.studentAffairsClearance && (
+                                                                <p className="text-xs text-stone-400 italic">No documents uploaded</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
 
                                                     {/* Additional Notes */}
                                                     {app.submitted_data?.additional?.notes && (
@@ -340,6 +403,10 @@ const ApplicationCenter = () => {
                                                                         </p>
                                                                     </div>
                                                                     <div>
+                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Level</p>
+                                                                        <p className="text-base font-medium text-stone-900">{app.submitted_data?.school?.level || "N/A"} Level</p>
+                                                                    </div>
+                                                                    <div>
                                                                         <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Matric Number</p>
                                                                         <p className="text-base font-mono font-medium text-stone-900">{app.submitted_data?.school?.matricNumber || "N/A"}</p>
                                                                     </div>
@@ -387,7 +454,66 @@ const ApplicationCenter = () => {
                                                                 </div>
                                                             )}
 
-                                                            {/* Section 3: Additional Notes */}
+                                                            {/* Section 3: Personal Details */}
+                                                            <div>
+                                                                <div className="flex items-center gap-3 mb-6">
+                                                                    <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-500">
+                                                                        <User className="h-4 w-4" />
+                                                                    </div>
+                                                                    <h5 className="text-sm font-bold text-stone-900 tracking-tight">Personal Details</h5>
+                                                                </div>
+
+                                                                <div className="grid grid-cols-2 gap-8 pl-11">
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Phone Number</p>
+                                                                        <p className="text-base font-medium text-stone-900">{app.applicant?.phone_number || app.submitted_data?.personal?.phone || "N/A"}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Email Address</p>
+                                                                        <p className="text-base font-medium text-stone-900">{app.applicant?.email || "N/A"}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Section 4: Documents */}
+                                                            <div>
+                                                                <div className="flex items-center gap-3 mb-6">
+                                                                    <div className="h-8 w-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-500">
+                                                                        <FileText className="h-4 w-4" />
+                                                                    </div>
+                                                                    <h5 className="text-sm font-bold text-stone-900 tracking-tight">Supporting Documents</h5>
+                                                                </div>
+
+                                                                <div className="pl-11 space-y-4">
+                                                                    {app.submitted_data?.documents?.studentId && (
+                                                                        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.documents.studentId, '_blank')}>
+                                                                            <div className="flex items-center gap-3">
+                                                                                <FileText className="h-5 w-5 text-primary" />
+                                                                                <div>
+                                                                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Student ID</p>
+                                                                                    <p className="text-sm font-medium text-primary">Click to view full document</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {app.submitted_data?.documents?.studentAffairsClearance && (
+                                                                        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.documents.studentAffairsClearance, '_blank')}>
+                                                                            <div className="flex items-center gap-3">
+                                                                                <FileText className="h-5 w-5 text-primary" />
+                                                                                <div>
+                                                                                    <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-1">Student Affairs Clearance</p>
+                                                                                    <p className="text-sm font-medium text-primary">Click to view full document</p>
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                    {!app.submitted_data?.documents?.studentId && !app.submitted_data?.documents?.studentAffairsClearance && (
+                                                                        <p className="pl-11 text-sm text-stone-400 italic">No documents uploaded</p>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Section 5: Additional Notes */}
                                                             {app.submitted_data?.additional?.notes && (
                                                                 <div>
                                                                     <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-3">Additional Notes / Requests</p>

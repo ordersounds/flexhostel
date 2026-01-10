@@ -45,6 +45,8 @@ const ApplicationForm = () => {
       department: "",
       matricNumber: "",
       level: "",
+      studentId: "",
+      studentAffairsClearance: "",
     },
     roommate: {
       hasRoommate: false,
@@ -58,10 +60,6 @@ const ApplicationForm = () => {
       hasPets: false,
       petDescription: "",
       notes: "",
-    },
-    documents: {
-      studentId: "",
-      studentAffairsClearance: "",
     },
   });
 
@@ -478,30 +476,32 @@ const ApplicationForm = () => {
                         </div>
                       )}
 
-                      <div className="space-y-4">
+                        <div className="space-y-4">
                         <div className="space-y-2">
                           <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-4">Student ID Upload</label>
                           <DocumentUpload
-                            value={formData.documents.studentId}
+                            value={formData.school.studentId}
                             onChange={(url) => setFormData({
                               ...formData,
-                              documents: { ...formData.documents, studentId: url }
+                              school: { ...formData.school, studentId: url }
                             })}
                             placeholder="Upload Student ID"
-                            folder="student-ids"
+                            bucket="images"
+                            folder="documents/student-ids"
                           />
                         </div>
 
                         <div className="space-y-2">
                           <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-4">Student Affairs Clearance</label>
                           <DocumentUpload
-                            value={formData.documents.studentAffairsClearance}
+                            value={formData.school.studentAffairsClearance}
                             onChange={(url) => setFormData({
                               ...formData,
-                              documents: { ...formData.documents, studentAffairsClearance: url }
+                              school: { ...formData.school, studentAffairsClearance: url }
                             })}
                             placeholder="Upload Student Affairs Clearance"
-                            folder="clearance-docs"
+                            bucket="images"
+                            folder="documents/clearance"
                           />
                         </div>
                       </div>
@@ -584,17 +584,17 @@ const ApplicationForm = () => {
                         <div className="p-5 md:p-6 bg-stone-50 rounded-2xl border border-stone-100">
                           <p className="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-1">Documents</p>
                           <div className="space-y-1">
-                            {formData.documents.studentId && (
+                            {formData.school.studentId && (
                               <p className="text-xs text-stone-500 flex items-center gap-1">
                                 <FileText className="h-3 w-3" /> Student ID uploaded
                               </p>
                             )}
-                            {formData.documents.studentAffairsClearance && (
+                            {formData.school.studentAffairsClearance && (
                               <p className="text-xs text-stone-500 flex items-center gap-1">
                                 <FileText className="h-3 w-3" /> Clearance uploaded
                               </p>
                             )}
-                            {!formData.documents.studentId && !formData.documents.studentAffairsClearance && (
+                            {!formData.school.studentId && !formData.school.studentAffairsClearance && (
                               <p className="text-xs text-stone-500">Documents pending</p>
                             )}
                           </div>
