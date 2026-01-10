@@ -54,7 +54,10 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
         amenities: "",
         agent_id: "",
         cover_image_url: "",
+        block_id: "",
+        floor_level: "ground",
     });
+    const [blocks, setBlocks] = useState<any[]>([]);
 
     useEffect(() => {
         if (open) {
@@ -69,7 +72,8 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
             .from("rooms")
             .select(`
                 *,
-                buildings (name, address),
+                buildings (id, name, address),
+                blocks:block_id (id, name),
                 tenancies:tenancies (
                     *,
                     profiles:tenant_id (*),
@@ -89,7 +93,19 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                 amenities: Array.isArray(room.amenities) ? room.amenities.join(", ") : "",
                 agent_id: room.agent_id || "",
                 cover_image_url: room.cover_image_url || "",
+                block_id: room.block_id || "",
+                floor_level: room.floor_level || "ground",
             });
+
+            // Fetch blocks for this building
+            if (room.building_id) {
+                const { data: blocksData } = await supabase
+                    .from("blocks")
+                    .select("id, name")
+                    .eq("building_id", room.building_id)
+                    .order("name");
+                setBlocks(blocksData || []);
+            }
 
             if (room.building_id) {
                 const { data: cData } = await supabase
@@ -119,6 +135,8 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                 amenities: amenitiesArray,
                 agent_id: formData.agent_id || null,
                 cover_image_url: formData.cover_image_url || null,
+                block_id: formData.block_id || null,
+                floor_level: formData.floor_level,
             })
             .eq("id", roomId);
 
@@ -331,6 +349,8 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                                                 amenities: Array.isArray(data.amenities) ? data.amenities.join(", ") : "",
                                                                 agent_id: data.agent_id || "",
                                                                 cover_image_url: data.cover_image_url || "",
+                                                                block_id: data.block_id || "",
+                                                                floor_level: data.floor_level || "ground",
                                                             });
                                                             setEditMode(false);
                                                         }}
@@ -403,6 +423,35 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                                     value={formData.amenities}
                                                     onChange={(e) => setFormData({ ...formData, amenities: e.target.value })}
                                                 />
+                                            </div>
+
+                                            {blocks.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <Label className="text-[9px] font-bold uppercase tracking-widest text-stone-400">Block</Label>
+                                                    <select
+                                                        disabled={!editMode}
+                                                        className="w-full h-11 px-4 rounded-xl border border-stone-200 bg-white text-xs font-bold outline-none appearance-none disabled:opacity-50"
+                                                        value={formData.block_id}
+                                                        onChange={(e) => setFormData({ ...formData, block_id: e.target.value })}
+                                                    >
+                                                        <option value="">No Block</option>
+                                                        {blocks.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                            <div className="space-y-2">
+                                                <Label className="text-[9px] font-bold uppercase tracking-widest text-stone-400">Floor Level</Label>
+                                                <select
+                                                    disabled={!editMode}
+                                                    className="w-full h-11 px-4 rounded-xl border border-stone-200 bg-white text-xs font-bold outline-none appearance-none disabled:opacity-50"
+                                                    value={formData.floor_level}
+                                                    onChange={(e) => setFormData({ ...formData, floor_level: e.target.value })}
+                                                >
+                                                    <option value="ground">Ground Floor</option>
+                                                    <option value="upstairs">Upstairs</option>
+                                                    <option value="downstairs">Downstairs</option>
+                                                </select>
                                             </div>
                                         </div>
 
