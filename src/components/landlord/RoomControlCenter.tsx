@@ -78,6 +78,10 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                     *,
                     profiles:tenant_id (*),
                     payments:payments!tenancy_id (*)
+                ),
+                applications:applications (
+                    *,
+                    payments:payments!application_id (*)
                 )
             `)
             .eq("id", roomId)
@@ -107,14 +111,6 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                 setBlocks(blocksData || []);
             }
 
-            if (room.building_id) {
-                const { data: cData } = await supabase
-                    .from("charges")
-                    .select("*")
-                    .eq("building_id", room.building_id)
-                    .eq("status", "active");
-                setCharges(cData || []);
-            }
         }
         setLoading(false);
     };
@@ -156,11 +152,20 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
     const activeTenancy = data?.tenancies?.find((t: any) => t.status === "active");
     const tenant = activeTenancy?.profiles;
 
-    // Flatten all payments across all tenancies for this room
-    const allPayments = data?.tenancies?.flatMap((t: any) => t.payments || []) || [];
+    // Flatten all payments across all tenancies and applications for this room
+    const tenancyPayments = data?.tenancies?.flatMap((t: any) => t.payments || []) || [];
+    const applicationPayments = data?.applications?.flatMap((a: any) => a.payments || []) || [];
+    const allPayments = [...tenancyPayments, ...applicationPayments];
+
+    // Calculate total revenue from successful payments
     const totalRevenue = allPayments
         ?.filter((p: any) => p.status === "success")
         ?.reduce((acc: number, p: any) => acc + (Number(p.amount) || 0), 0) || 0;
+
+    // Sort payments by date (newest first)
+    const sortedPayments = [...allPayments].sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -212,7 +217,6 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                     <section className="space-y-4">
                                         <div className="flex justify-between items-center">
                                             <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Resident Profile</h4>
-                                            {tenant && <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-widest">View History</Button>}
                                         </div>
                                         {tenant ? (
                                             <div className="bg-stone-50 rounded-3xl p-6 flex items-center gap-6 border border-stone-100">
@@ -251,52 +255,18 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                         </div>
                                     </section>
 
+
                                     <section className="space-y-4">
                                         <div className="flex justify-between items-center">
-                                            <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Upcoming Dues</h4>
+                                            <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Recent Unit Transactions</h4>
+                                            {allPayments?.length > 3 && (
+                                                <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-widest">
+                                                    View All <ExternalLink className="h-3 w-3 ml-1" />
+                                                </Button>
+                                            )}
                                         </div>
-                                        {charges.length === 0 ? (
-                                            <p className="text-stone-400 text-xs italic">No recurring charges defined.</p>
-                                        ) : (
-                                            <div className="space-y-3">
-                                                {charges.map(charge => {
-                                                    // Check if paid for current tenancy
-                                                    const isPaid = activeTenancy && allPayments?.some((p: any) =>
-                                                        p.charge_id === charge.id &&
-                                                        p.tenancy_id === activeTenancy.id &&
-                                                        p.status === 'success'
-                                                    );
-
-                                                    return (
-                                                        <div key={charge.id} className="bg-white p-4 rounded-2xl border border-stone-100 flex items-center justify-between">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className={cn("h-10 w-10 rounded-full flex items-center justify-center", isPaid ? "bg-emerald-50 text-emerald-600" : "bg-primary/10 text-primary")}>
-                                                                    <Receipt className="h-4 w-4" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-bold text-stone-900 text-sm">{charge.name}</p>
-                                                                    <p className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">
-                                                                        ₦{Number(charge.amount).toLocaleString()} / {charge.frequency}
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                            <Badge className={cn(
-                                                                "rounded-full px-3 py-1 text-[8px] font-bold uppercase tracking-widest border-none",
-                                                                isPaid ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
-                                                            )}>
-                                                                {isPaid ? "Paid" : "Pending"}
-                                                            </Badge>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-                                    </section>
-
-                                    <section className="space-y-4">
-                                        <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Recent Unit Transactions</h4>
                                         <div className="bg-white rounded-3xl border border-stone-100 divide-y divide-stone-50">
-                                            {allPayments?.slice(0, 3).map((p: any) => (
+                                            {sortedPayments?.slice(0, 5).map((p: any) => (
                                                 <div key={p.id} className="p-5 flex justify-between items-center">
                                                     <div className="flex items-center gap-3">
                                                         <div className="h-10 w-10 rounded-xl bg-stone-50 flex items-center justify-center">
@@ -305,11 +275,16 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                                         <div>
                                                             <p className="text-sm font-bold text-stone-900">₦{p.amount.toLocaleString()}</p>
                                                             <p className="text-[10px] font-medium text-stone-400">{new Date(p.created_at).toLocaleDateString()}</p>
+                                                            <p className="text-[9px] font-medium text-stone-300 uppercase tracking-wider mt-0.5">
+                                                                {p.payment_type || 'Payment'} • {p.payment_method || 'N/A'}
+                                                            </p>
                                                         </div>
                                                     </div>
                                                     <Badge className={cn(
                                                         "rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest border-none",
-                                                        p.status === "success" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                                                        p.status === "success" ? "bg-emerald-50 text-emerald-600" :
+                                                        p.status === "pending" ? "bg-amber-50 text-amber-600" :
+                                                        p.status === "failed" ? "bg-red-50 text-red-600" : "bg-stone-50 text-stone-600"
                                                     )}>
                                                         {p.status}
                                                     </Badge>
@@ -323,52 +298,52 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                 </div>
 
                                 {/* Config Sidebar */}
-                                <div className="space-y-8 h-fit lg:sticky lg:top-0">
+                                <div className="lg:col-span-1 space-y-8 h-fit lg:sticky lg:top-0">
                                     <div className="bg-stone-50 rounded-[2rem] p-8 space-y-6">
-                                        <div className="flex justify-between items-center">
-                                            <h5 className="text-[10px] font-bold text-stone-900 uppercase tracking-widest">Configuration</h5>
-                                            {!editMode ? (
+                                    <div className="flex justify-between items-center gap-3">
+                                        <h5 className="text-[10px] font-bold text-stone-900 uppercase tracking-widest">Configuration</h5>
+                                        {!editMode ? (
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="h-9 px-4 rounded-xl border-stone-200 hover:bg-stone-100 text-[10px] font-bold uppercase tracking-widest"
+                                                onClick={() => setEditMode(true)}
+                                            >
+                                                <Settings2 className="h-3.5 w-3.5 mr-2" />
+                                                Edit
+                                            </Button>
+                                        ) : (
+                                            <div className="flex gap-2">
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="h-9 px-4 rounded-xl border-stone-200 hover:bg-stone-100 text-[10px] font-bold uppercase tracking-widest"
-                                                    onClick={() => setEditMode(true)}
+                                                    className="h-9 px-4 rounded-xl border-stone-200 text-[10px] font-bold uppercase tracking-widest"
+                                                    onClick={() => {
+                                                        setFormData({
+                                                            price: data.price.toString(),
+                                                            amenities: Array.isArray(data.amenities) ? data.amenities.join(", ") : "",
+                                                            agent_id: data.agent_id || "",
+                                                            cover_image_url: data.cover_image_url || "",
+                                                            block_id: data.block_id || "",
+                                                            floor_level: data.floor_level || "ground",
+                                                        });
+                                                        setEditMode(false);
+                                                    }}
                                                 >
-                                                    <Settings2 className="h-3.5 w-3.5 mr-2" />
-                                                    Edit
+                                                    Cancel
                                                 </Button>
-                                            ) : (
-                                                <div className="flex gap-2">
-                                                    <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-9 px-4 rounded-xl border-stone-200 text-[10px] font-bold uppercase tracking-widest"
-                                                        onClick={() => {
-                                                            setFormData({
-                                                                price: data.price.toString(),
-                                                                amenities: Array.isArray(data.amenities) ? data.amenities.join(", ") : "",
-                                                                agent_id: data.agent_id || "",
-                                                                cover_image_url: data.cover_image_url || "",
-                                                                block_id: data.block_id || "",
-                                                                floor_level: data.floor_level || "ground",
-                                                            });
-                                                            setEditMode(false);
-                                                        }}
-                                                    >
-                                                        Cancel
-                                                    </Button>
-                                                    <Button
-                                                        size="sm"
-                                                        className="h-9 px-4 rounded-xl bg-stone-900 text-white text-[10px] font-bold uppercase tracking-widest"
-                                                        onClick={handleUpdate}
-                                                        disabled={loading}
-                                                    >
-                                                        <Save className="h-3.5 w-3.5 mr-2" />
-                                                        Save
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
+                                                <Button
+                                                    size="sm"
+                                                    className="h-9 px-4 rounded-xl bg-stone-900 text-white text-[10px] font-bold uppercase tracking-widest"
+                                                    onClick={handleUpdate}
+                                                    disabled={loading}
+                                                >
+                                                    <Save className="h-3.5 w-3.5 mr-2" />
+                                                    Save
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
 
                                         <div className="space-y-4">
                                             <div className="space-y-2">
@@ -455,16 +430,32 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                             </div>
                                         </div>
 
-
                                     </div>
+                                </div>
+                            </div>
 
-                                    <div className="bg-primary/5 rounded-[2rem] p-8 flex items-center justify-between">
+                            {/* Room Yield - Full Width */}
+                            <div className="lg:col-span-3 mt-8">
+                                <div className="bg-primary/5 rounded-[2rem] p-8 space-y-4">
+                                    <div className="flex items-center justify-between">
                                         <div>
-                                            <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Room Yield (LTD)</p>
+                                            <p className="text-[10px] font-bold text-primary uppercase tracking-widest">Room Yield (Lifetime)</p>
                                             <p className="text-2xl font-display font-bold text-stone-900 mt-1">₦{totalRevenue.toLocaleString()}</p>
                                         </div>
                                         <div className="h-12 w-12 rounded-2xl bg-white flex items-center justify-center text-primary shadow-sm">
                                             <Clock className="h-6 w-6" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4 text-center">
+                                        <div>
+                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Total Transactions</p>
+                                            <p className="text-lg font-display font-bold text-stone-900 mt-1">{allPayments?.length || 0}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Success Rate</p>
+                                            <p className="text-lg font-display font-bold text-stone-900 mt-1">
+                                                {allPayments?.length > 0 ? `${Math.round((allPayments.filter((p: any) => p.status === "success").length / allPayments.length) * 100)}%` : '0%'}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>

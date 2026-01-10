@@ -162,9 +162,9 @@ const PropertyPortfolio = () => {
 
                         return (
                             <div key={room.id} className={cn("group bg-white rounded-[2.5rem] border border-stone-100 shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 relative overflow-hidden", isMobile ? "p-6" : "p-8")}>
-                                <div className={cn("absolute top-0 right-0 flex items-center gap-2", isMobile ? "p-6" : "p-8")}>
+                                <div className={cn("absolute top-0 right-0 flex flex-col sm:flex-row items-start sm:items-center gap-2", isMobile ? "p-4" : "p-6")}>
                                     {room.blocks?.name && (
-                                        <Badge className="rounded-full px-2 py-1 font-bold uppercase tracking-widest text-[8px] border-none shadow-sm bg-primary/10 text-primary">
+                                        <Badge className="rounded-full px-2 py-1 font-bold uppercase tracking-widest text-[8px] border-none shadow-sm bg-primary/10 text-primary whitespace-nowrap">
                                             {room.blocks.name}
                                         </Badge>
                                     )}
@@ -178,25 +178,25 @@ const PropertyPortfolio = () => {
                                 </div>
 
                                 <div className="space-y-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className={cn("rounded-2xl bg-stone-50 text-stone-900 flex items-center justify-center font-bold text-xl border border-stone-100 group-hover:bg-stone-900 group-hover:text-white transition-colors duration-500", isMobile ? "h-12 w-12" : "h-14 w-14")}>
-                                            {room.room_name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <h4 className={cn("font-display font-bold text-stone-900 tracking-tight leading-none", isMobile ? "text-lg" : "text-2xl")}>{room.room_name}</h4>
-                                            <div className="flex items-center gap-3 mt-2">
-                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1">
-                                                    <CreditCard className="h-3 w-3" /> ₦{room.price.toLocaleString()}/yr
-                                                </p>
-                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1">
-                                                    {room.floor_level === "upstairs" ? <ArrowUp className="h-3 w-3" /> : 
-                                                     room.floor_level === "downstairs" ? <ArrowDown className="h-3 w-3" /> : 
-                                                     <Minus className="h-3 w-3" />}
-                                                    {room.floor_level || "ground"}
-                                                </p>
-                                            </div>
+                                <div className="flex items-center gap-4">
+                                    <div className={cn("rounded-2xl bg-stone-50 text-stone-900 flex items-center justify-center font-bold text-xl border border-stone-100 group-hover:bg-stone-900 group-hover:text-white transition-colors duration-500", isMobile ? "h-12 w-12" : "h-14 w-14")}>
+                                        {room.room_name.charAt(0)}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <h4 className={cn("font-display font-bold text-stone-900 tracking-tight leading-none truncate", isMobile ? "text-lg" : "text-2xl")}>{room.room_name}</h4>
+                                        <div className="flex flex-wrap items-center gap-2 mt-2">
+                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1 whitespace-nowrap">
+                                                <CreditCard className="h-3 w-3" /> ₦{room.price.toLocaleString()}/yr
+                                            </p>
+                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1 whitespace-nowrap">
+                                                {room.floor_level === "upstairs" ? <ArrowUp className="h-3 w-3" /> :
+                                                 room.floor_level === "downstairs" ? <ArrowDown className="h-3 w-3" /> :
+                                                 <Minus className="h-3 w-3" />}
+                                                {room.floor_level || "ground"}
+                                            </p>
                                         </div>
                                     </div>
+                                </div>
 
                                     <div className="pt-4 border-t border-stone-50 space-y-4">
                                         <div className="flex justify-between items-center text-xs font-medium">

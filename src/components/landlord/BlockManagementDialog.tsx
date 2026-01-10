@@ -281,7 +281,7 @@ const BlockManagementDialog = ({
                                                         {block.name.charAt(0)}
                                                     </div>
                                                     
-                                                    {editingBlock === block.id ? (
+                                        {editingBlock === block.id ? (
                                                         <div className="flex items-center gap-2 flex-1">
                                                             <Input
                                                                 value={editName}
@@ -306,23 +306,23 @@ const BlockManagementDialog = ({
                                                             </Button>
                                                         </div>
                                                     ) : (
-                                                        <div className="flex-1">
-                                                            <h4 className="font-bold text-stone-900 text-lg">
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="font-bold text-stone-900 text-lg truncate">
                                                                 {block.name}
                                                             </h4>
-                                                            <div className="flex items-center gap-4 mt-1">
-                                                                <span className="text-xs text-stone-500 flex items-center gap-1">
+                                                            <div className="flex flex-wrap items-center gap-2 mt-1">
+                                                                <span className="text-xs text-stone-500 flex items-center gap-1 whitespace-nowrap">
                                                                     <Box className="h-3 w-3" />
                                                                     {block.room_count} rooms
                                                                 </span>
                                                                 {block.agent_name && (
-                                                                    <span className="text-xs text-stone-500 flex items-center gap-1">
+                                                                    <span className="text-xs text-stone-500 flex items-center gap-1 whitespace-nowrap">
                                                                         <Shield className="h-3 w-3" />
                                                                         {block.agent_name}
                                                                     </span>
                                                                 )}
                                                                 {block.default_price && (
-                                                                    <span className="text-xs text-stone-500 flex items-center gap-1">
+                                                                    <span className="text-xs text-stone-500 flex items-center gap-1 whitespace-nowrap">
                                                                         <CreditCard className="h-3 w-3" />
                                                                         ₦{block.default_price.toLocaleString()}
                                                                     </span>
@@ -333,35 +333,37 @@ const BlockManagementDialog = ({
                                                 </div>
 
                                                 {editingBlock !== block.id && (
-                                                    <div className="flex items-center gap-2">
+                                                    <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
                                                             onClick={() => openBulkUpdate(block)}
-                                                            className="h-9 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest"
+                                                            className="h-9 px-3 rounded-lg text-[10px] font-bold uppercase tracking-widest w-full sm:w-auto"
                                                         >
                                                             <Settings2 className="h-3.5 w-3.5 mr-1" />
                                                             Bulk Update
                                                         </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => {
-                                                                setEditingBlock(block.id);
-                                                                setEditName(block.name);
-                                                            }}
-                                                            className="h-9 w-9 p-0 rounded-lg"
-                                                        >
-                                                            <Edit3 className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => handleDeleteBlock(block.id, block.name)}
-                                                            className="h-9 w-9 p-0 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => {
+                                                                    setEditingBlock(block.id);
+                                                                    setEditName(block.name);
+                                                                }}
+                                                                className="h-9 w-9 p-0 rounded-lg"
+                                                            >
+                                                                <Edit3 className="h-4 w-4" />
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                onClick={() => handleDeleteBlock(block.id, block.name)}
+                                                                className="h-9 w-9 p-0 rounded-lg text-red-500 hover:text-red-600 hover:bg-red-50"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>
