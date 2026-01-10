@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Building2, Plus, DoorOpen, MapPin, MoreHorizontal, ChevronRight, Search, ArrowLeft, Users, CreditCard, LayoutDashboard, Image as ImageIcon, Shield } from "lucide-react";
+import { Building2, Plus, DoorOpen, MapPin, MoreHorizontal, ChevronRight, Search, ArrowLeft, Users, CreditCard, LayoutDashboard, Image as ImageIcon, Shield, Layers, ArrowUp, ArrowDown, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -54,13 +54,15 @@ const PropertyPortfolio = () => {
             .select(`
                 *,
                 profiles:agent_id (name),
+                blocks:block_id (name),
                 tenancies:tenancies(
                     id,
                     status,
                     profiles:tenant_id (name, photo_url)
                 )
             `)
-            .eq("building_id", buildingId);
+            .eq("building_id", buildingId)
+            .order("room_name");
 
         if (error) {
             toast.error("Failed to load rooms");
@@ -160,7 +162,12 @@ const PropertyPortfolio = () => {
 
                         return (
                             <div key={room.id} className={cn("group bg-white rounded-[2.5rem] border border-stone-100 shadow-sm hover:shadow-2xl hover:shadow-stone-200/50 transition-all duration-500 relative overflow-hidden", isMobile ? "p-6" : "p-8")}>
-                                <div className={cn("absolute top-0 right-0", isMobile ? "p-6" : "p-8")}>
+                                <div className={cn("absolute top-0 right-0 flex items-center gap-2", isMobile ? "p-6" : "p-8")}>
+                                    {room.blocks?.name && (
+                                        <Badge className="rounded-full px-2 py-1 font-bold uppercase tracking-widest text-[8px] border-none shadow-sm bg-primary/10 text-primary">
+                                            {room.blocks.name}
+                                        </Badge>
+                                    )}
                                     <Badge className={cn(
                                         "rounded-full px-3 py-1 font-bold uppercase tracking-widest text-[8px] border-none shadow-sm",
                                         room.status === "available" ? "bg-emerald-50 text-emerald-600" :
@@ -177,9 +184,17 @@ const PropertyPortfolio = () => {
                                         </div>
                                         <div>
                                             <h4 className={cn("font-display font-bold text-stone-900 tracking-tight leading-none", isMobile ? "text-lg" : "text-2xl")}>{room.room_name}</h4>
-                                            <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mt-2 flex items-center gap-1">
-                                                <CreditCard className="h-3 w-3" /> ₦{room.price.toLocaleString()}/year
-                                            </p>
+                                            <div className="flex items-center gap-3 mt-2">
+                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1">
+                                                    <CreditCard className="h-3 w-3" /> ₦{room.price.toLocaleString()}/yr
+                                                </p>
+                                                <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest flex items-center gap-1">
+                                                    {room.floor_level === "upstairs" ? <ArrowUp className="h-3 w-3" /> : 
+                                                     room.floor_level === "downstairs" ? <ArrowDown className="h-3 w-3" /> : 
+                                                     <Minus className="h-3 w-3" />}
+                                                    {room.floor_level || "ground"}
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 

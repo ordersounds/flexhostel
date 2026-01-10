@@ -123,6 +123,54 @@ export type Database = {
           },
         ]
       }
+      blocks: {
+        Row: {
+          agent_id: string | null
+          building_id: string
+          created_at: string
+          default_amenities: Json | null
+          default_price: number | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id?: string | null
+          building_id: string
+          created_at?: string
+          default_amenities?: Json | null
+          default_price?: number | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string | null
+          building_id?: string
+          created_at?: string
+          default_amenities?: Json | null
+          default_price?: number | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blocks_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blocks_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buildings: {
         Row: {
           address: string
@@ -421,10 +469,12 @@ export type Database = {
         Row: {
           agent_id: string | null
           amenities: Json | null
+          block_id: string | null
           building_id: string
           cover_image_url: string | null
           created_at: string
           description: string | null
+          floor_level: string | null
           gallery_images: Json | null
           gender: Database["public"]["Enums"]["room_gender"]
           id: string
@@ -436,10 +486,12 @@ export type Database = {
         Insert: {
           agent_id?: string | null
           amenities?: Json | null
+          block_id?: string | null
           building_id: string
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          floor_level?: string | null
           gallery_images?: Json | null
           gender?: Database["public"]["Enums"]["room_gender"]
           id?: string
@@ -451,10 +503,12 @@ export type Database = {
         Update: {
           agent_id?: string | null
           amenities?: Json | null
+          block_id?: string | null
           building_id?: string
           cover_image_url?: string | null
           created_at?: string
           description?: string | null
+          floor_level?: string | null
           gallery_images?: Json | null
           gender?: Database["public"]["Enums"]["room_gender"]
           id?: string
@@ -469,6 +523,13 @@ export type Database = {
             columns: ["agent_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_block_id_fkey"
+            columns: ["block_id"]
+            isOneToOne: false
+            referencedRelation: "blocks"
             referencedColumns: ["id"]
           },
           {
@@ -582,6 +643,18 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      update_block_rooms_defaults: {
+        Args: {
+          block_id_param: string
+          new_agent_id_param?: string
+          new_amenities_param?: Json
+          new_price_param?: number
+        }
+        Returns: {
+          error_message: string
+          rooms_updated: number
+        }[]
       }
       update_building_rooms_defaults: {
         Args: {

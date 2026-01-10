@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Shield, Edit, Settings2 } from "lucide-react";
+import { MoreHorizontal, Edit, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     DropdownMenu,
@@ -7,9 +7,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import AssignAgentDialog from "./AssignAgentDialog";
 import EditBuildingDialog from "./EditBuildingDialog";
-import BuildingBulkUpdateDialog from "./BuildingBulkUpdateDialog";
+import BlockManagementDialog from "./BlockManagementDialog";
 
 interface BuildingOptionsMenuProps {
     buildingId: string;
@@ -30,9 +29,8 @@ const BuildingOptionsMenu = ({
     currentAddress,
     onSuccess
 }: BuildingOptionsMenuProps) => {
-    const [assignAgentOpen, setAssignAgentOpen] = useState(false);
     const [editBuildingOpen, setEditBuildingOpen] = useState(false);
-    const [bulkUpdateOpen, setBulkUpdateOpen] = useState(false);
+    const [manageBlocksOpen, setManageBlocksOpen] = useState(false);
 
     return (
         <>
@@ -47,13 +45,9 @@ const BuildingOptionsMenu = ({
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
-                    <DropdownMenuItem onClick={() => setBulkUpdateOpen(true)}>
-                        <Settings2 className="h-4 w-4 mr-2" />
-                        Bulk Update Rooms
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setAssignAgentOpen(true)}>
-                        <Shield className="h-4 w-4 mr-2" />
-                        Assign Agent
+                    <DropdownMenuItem onClick={() => setManageBlocksOpen(true)}>
+                        <Layers className="h-4 w-4 mr-2" />
+                        Manage Blocks
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setEditBuildingOpen(true)}>
                         <Edit className="h-4 w-4 mr-2" />
@@ -62,21 +56,11 @@ const BuildingOptionsMenu = ({
                 </DropdownMenuContent>
             </DropdownMenu>
 
-            <BuildingBulkUpdateDialog
-                open={bulkUpdateOpen}
-                onOpenChange={setBulkUpdateOpen}
+            <BlockManagementDialog
+                open={manageBlocksOpen}
+                onOpenChange={setManageBlocksOpen}
                 buildingId={buildingId}
                 buildingName={buildingName}
-                currentAgentId={currentAgentId}
-                onSuccess={onSuccess}
-            />
-
-            <AssignAgentDialog
-                open={assignAgentOpen}
-                onOpenChange={setAssignAgentOpen}
-                buildingId={buildingId}
-                buildingName={buildingName}
-                currentAgentId={currentAgentId}
                 onSuccess={onSuccess}
             />
 
