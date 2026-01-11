@@ -195,12 +195,22 @@ const BroadcastCenter = () => {
         if (!currentUser) return;
 
         try {
-            const { data, error } = await supabase
+            // First try to fetch buildings by landlord_id
+            let { data, error } = await supabase
                 .from("buildings")
                 .select("id, name, address")
                 .eq("landlord_id", currentUser.id);
 
             if (error) throw error;
+
+            // Fallback: if no buildings found and user is landlord role, fetch all buildings
+            // This handles the case where landlord_id might not be set on buildings
+            if ((!data || data.length === 0) && currentUser.role === 'landlord') {
+                const allBuildings = await supabase
+                    .from("buildings")
+                    .select("id, name, address");
+                data = allBuildings.data;
+            }
 
             setBuildings(data || []);
             if (data && data.length > 0 && !selectedBuilding) {
@@ -216,32 +226,46 @@ const BroadcastCenter = () => {
         if (!currentUser) return;
 
         try {
-            // Get all building IDs owned by the landlord
-            const { data: landlordBuildings } = await supabase
-                .from("buildings")
-                .select("id")
-                .eq("landlord_id", currentUser.id);
+            // For landlords, fetch all announcements they created or for their buildings
+            if (currentUser.role === 'landlord') {
+                const { data, error } = await supabase
+                    .from("announcements")
+                    .select(`
+                        *,
+                        building:buildings(name)
+                    `)
+                    .eq("created_by", currentUser.id)
+                    .order("created_at", { ascending: false });
 
-            if (!landlordBuildings || landlordBuildings.length === 0) {
-                setAnnouncements([]);
-                return;
+                if (error) throw error;
+                setAnnouncements(data || []);
+            } else {
+                // Get all building IDs owned by the landlord
+                const { data: landlordBuildings } = await supabase
+                    .from("buildings")
+                    .select("id")
+                    .eq("landlord_id", currentUser.id);
+
+                if (!landlordBuildings || landlordBuildings.length === 0) {
+                    setAnnouncements([]);
+                    return;
+                }
+
+                const buildingIds = landlordBuildings.map(b => b.id);
+
+                // Fetch announcements for all landlord's buildings
+                const { data, error } = await supabase
+                    .from("announcements")
+                    .select(`
+                        *,
+                        building:buildings(name)
+                    `)
+                    .or(`building_id.in.(${buildingIds.join(',')}),building_id.is.null`)
+                    .order("created_at", { ascending: false });
+
+                if (error) throw error;
+                setAnnouncements(data || []);
             }
-
-            const buildingIds = landlordBuildings.map(b => b.id);
-
-            // Fetch announcements for all landlord's buildings
-            const { data, error } = await supabase
-                .from("announcements")
-                .select(`
-                    *,
-                    building:buildings(name)
-                `)
-                .or(`building_id.in.(${buildingIds.join(',')}),building_id.is.null`)
-                .order("created_at", { ascending: false });
-
-            if (error) throw error;
-
-            setAnnouncements(data || []);
         } catch (error) {
             console.error("Failed to fetch announcements:", error);
             toast.error("Failed to load announcements");
@@ -701,17 +725,14 @@ const BroadcastCenter = () => {
                                             .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                                             .map((message) => {
                                                 const isCurrentUser = message.sender_id === currentUser?.id;
-                                                const participant = isCurrentUser ? currentUser : (
-                                                    conversation.type === 'direct'
-                                                        ? conversations.find(c => c.id === selectedConversation)?.participantName || 'Unknown'
-                                                        : message.sender?.name || 'Unknown'
-                                                );
+                                                const conversation = conversations.find(c => c.id === selectedConversation);
+                                                const participantName = conversation?.participantName || 'Unknown';
 
                                                 return (
                                                     <div key={message.id} className={`flex gap-3 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                                         {!isCurrentUser && (
                                                             <Avatar className="h-6 w-6">
-                                                                {conversation.type === 'building' ? (
+                                                                {conversation?.type === 'building' ? (
                                                                     <AvatarFallback className="text-xs bg-primary text-white">
                                                                         <Building2 className="h-4 w-4" />
                                                                     </AvatarFallback>
@@ -719,17 +740,17 @@ const BroadcastCenter = () => {
                                                                     <>
                                                                         <AvatarImage src={message.sender?.photo_url || undefined} />
                                                                         <AvatarFallback className="text-xs">
-                                                                            {participant.charAt(0)}
+                                                                            {participantName.charAt(0)}
                                                                         </AvatarFallback>
                                                                     </>
                                                                 )}
                                                             </Avatar>
                                                         )}
                                                         <div className={`flex-1 ${isCurrentUser ? 'text-right' : ''}`}>
-                                                            {!isCurrentUser && conversation.type === 'direct' && (
+                                                            {!isCurrentUser && conversation?.type === 'direct' && (
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <span className="text-sm font-bold text-stone-900">
-                                                                        {participant}
+                                                                        {participantName}
                                                                     </span>
                                                                     {message.sender?.role === 'landlord' && (
                                                                         <Crown className="h-3 w-3 text-amber-500" />
