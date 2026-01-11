@@ -38,6 +38,13 @@ interface Message {
         photo_url: string | null;
         role: string;
     };
+    receiver?: {
+        id: string;
+        name: string;
+        email: string;
+        photo_url: string | null;
+        role: string;
+    };
 }
 
 interface Conversation {
@@ -278,12 +285,13 @@ const BroadcastCenter = () => {
         try {
             setLoading(true);
 
-            // Fetch all relevant messages
+            // Fetch all relevant messages with both sender and receiver info
             const { data: messagesData, error: messagesError } = await supabase
                 .from("messages")
                 .select(`
                     *,
-                    sender:profiles!messages_sender_id_fkey(id, name, email, photo_url, role)
+                    sender:profiles!messages_sender_id_fkey(id, name, email, photo_url, role),
+                    receiver:profiles!messages_receiver_id_fkey(id, name, email, photo_url, role)
                 `)
                 .or(`sender_id.eq.${currentUser.id},receiver_id.eq.${currentUser.id},building_id.not.is.null`)
                 .order("created_at", { ascending: false });
@@ -328,18 +336,28 @@ const BroadcastCenter = () => {
 
                     const conversationId = otherUserId;
 
-                    // Get participant info from message sender or cache
+                    // Get participant info from message - either sender or receiver depending on who the "other" person is
                     let participantName = 'Unknown User';
                     let participantRole: string | undefined = undefined;
                     let participantPhoto: string | null = null;
                     let participantEmail = '';
 
+                    // If the other user is the sender (they sent us a message)
                     if (message.sender_id !== currentUser.id && message.sender) {
                         participantName = message.sender.name || 'Unknown User';
                         participantRole = message.sender.role;
                         participantPhoto = message.sender.photo_url;
                         participantEmail = message.sender.email;
-                    } else if (recipientCache[otherUserId]) {
+                    } 
+                    // If the other user is the receiver (we sent them a message)
+                    else if (message.sender_id === currentUser.id && message.receiver) {
+                        participantName = message.receiver.name || 'Unknown User';
+                        participantRole = message.receiver.role;
+                        participantPhoto = message.receiver.photo_url;
+                        participantEmail = message.receiver.email;
+                    }
+                    // Check cache as fallback
+                    else if (recipientCache[otherUserId]) {
                         const cached = recipientCache[otherUserId];
                         participantName = cached.name;
                         participantRole = cached.role;
@@ -368,10 +386,10 @@ const BroadcastCenter = () => {
                                 ...existing,
                                 lastMessage: message.content,
                                 lastMessageTime: message.created_at,
-                                // Keep the original participant name - THIS IS THE KEY FIX
-                                participantName: existing.participantName,
-                                participantRole: existing.participantRole,
-                                participantPhoto: existing.participantPhoto
+                                // Only update participant info if current is Unknown
+                                participantName: existing.participantName !== 'Unknown User' ? existing.participantName : participantName,
+                                participantRole: existing.participantRole || participantRole,
+                                participantPhoto: existing.participantPhoto || participantPhoto
                             });
                         }
                     }
@@ -401,13 +419,21 @@ const BroadcastCenter = () => {
             setLoadingRecipients(true);
             setRecipients([]);
 
-            // Get all building IDs owned by the landlord
-            const { data: landlordBuildings, error: buildingsError } = await supabase
+            // Get all building IDs owned by the landlord (or all buildings if landlord role)
+            let { data: landlordBuildings, error: buildingsError } = await supabase
                 .from("buildings")
-                .select("id")
+                .select("id, agent_id")
                 .eq("landlord_id", currentUser.id);
 
             if (buildingsError) throw buildingsError;
+
+            // Fallback: if no buildings found and user is landlord, fetch all buildings
+            if ((!landlordBuildings || landlordBuildings.length === 0) && currentUser.role === 'landlord') {
+                const allBuildings = await supabase
+                    .from("buildings")
+                    .select("id, agent_id");
+                landlordBuildings = allBuildings.data;
+            }
 
             if (!landlordBuildings || landlordBuildings.length === 0) {
                 toast.info("No buildings found. Add buildings to message tenants.");
@@ -415,6 +441,7 @@ const BroadcastCenter = () => {
             }
 
             const buildingIds = landlordBuildings.map(b => b.id);
+            const agentIds = landlordBuildings.map(b => b.agent_id).filter(Boolean) as string[];
 
             // Get all rooms in landlord's buildings
             const { data: rooms, error: roomsError } = await supabase
@@ -426,23 +453,20 @@ const BroadcastCenter = () => {
 
             const roomIds = rooms?.map(r => r.id) || [];
 
-            // Fetch tenants with active tenancies
-            const tenantsQuery = supabase
-                .from("profiles")
-                .select("id, name, email, role, photo_url")
-                .eq("role", "tenant")
-                .eq("status", "active");
-
-            // Fetch agents assigned to landlord's buildings
-            const agentsQuery = supabase
-                .from("profiles")
-                .select("id, name, email, role, photo_url")
-                .eq("role", "agent")
-                .in("id", (await supabase.from("buildings").select("agent_id").in("id", buildingIds)).data?.map(b => b.agent_id).filter(Boolean) || []);
-
+            // Fetch tenants with active tenancies and agents in parallel
             const [tenantsResult, agentsResult] = await Promise.all([
-                tenantsQuery,
-                agentsQuery
+                supabase
+                    .from("profiles")
+                    .select("id, name, email, role, photo_url")
+                    .eq("role", "tenant")
+                    .eq("status", "active"),
+                agentIds.length > 0 
+                    ? supabase
+                        .from("profiles")
+                        .select("id, name, email, role, photo_url")
+                        .eq("role", "agent")
+                        .in("id", agentIds)
+                    : Promise.resolve({ data: [], error: null })
             ]);
 
             let filteredTenants: Recipient[] = [];
