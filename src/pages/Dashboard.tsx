@@ -154,7 +154,7 @@ const Dashboard = () => {
             supabase
               .from("announcements")
               .select("*")
-              .eq("building_id", activeBuildingId)
+              .or(`building_id.eq.${activeBuildingId},building_id.is.null`)
               .order("created_at", { ascending: false }),
             supabase
               .from("charges")
