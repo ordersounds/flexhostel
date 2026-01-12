@@ -80,7 +80,7 @@ const Footer = () => {
                   <MapPin className="h-4 w-4" />
                 </div>
                 <span className="text-stone-400 text-sm leading-relaxed">
-                  Broad Street, <br /> Okitipupa, Ondo
+                  Okitipupa, Ondo State, Nigeria
                 </span>
               </li>
               <li className="flex items-center gap-4">

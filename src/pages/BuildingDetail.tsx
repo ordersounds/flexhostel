@@ -106,7 +106,7 @@ const BuildingDetail = () => {
         {/* Editorial Hero */}
         <section className="relative h-[60vh] min-h-[500px] flex items-end pb-20 overflow-hidden">
           <img
-            src={buildingCover}
+            src={building?.cover_image_url || buildingCover}
             alt="Flex Hostel Okitipupa"
             className="absolute inset-0 w-full h-full object-cover"
           />
