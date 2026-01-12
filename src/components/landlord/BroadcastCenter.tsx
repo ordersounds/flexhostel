@@ -701,9 +701,10 @@ const BroadcastCenter = () => {
                                             .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                                             .map((message) => {
                                                 const isCurrentUser = message.sender_id === currentUser?.id;
-                                                const participant = isCurrentUser ? currentUser : (
-                                                    conversation.type === 'direct'
-                                                        ? conversations.find(c => c.id === selectedConversation)?.participantName || 'Unknown'
+                                                const currentConversation = conversations.find(c => c.id === selectedConversation);
+                                                const participantName = isCurrentUser ? currentUser?.name : (
+                                                    currentConversation?.type === 'direct'
+                                                        ? currentConversation?.participantName || 'Unknown'
                                                         : message.sender?.name || 'Unknown'
                                                 );
 
@@ -711,7 +712,7 @@ const BroadcastCenter = () => {
                                                     <div key={message.id} className={`flex gap-3 ${isCurrentUser ? 'flex-row-reverse' : ''}`}>
                                                         {!isCurrentUser && (
                                                             <Avatar className="h-6 w-6">
-                                                                {conversation.type === 'building' ? (
+                                                                {currentConversation?.type === 'building' ? (
                                                                     <AvatarFallback className="text-xs bg-primary text-white">
                                                                         <Building2 className="h-4 w-4" />
                                                                     </AvatarFallback>
@@ -719,17 +720,17 @@ const BroadcastCenter = () => {
                                                                     <>
                                                                         <AvatarImage src={message.sender?.photo_url || undefined} />
                                                                         <AvatarFallback className="text-xs">
-                                                                            {participant.charAt(0)}
+                                                                            {typeof participantName === 'string' ? participantName.charAt(0) : '?'}
                                                                         </AvatarFallback>
                                                                     </>
                                                                 )}
                                                             </Avatar>
                                                         )}
                                                         <div className={`flex-1 ${isCurrentUser ? 'text-right' : ''}`}>
-                                                            {!isCurrentUser && conversation.type === 'direct' && (
+                                                            {!isCurrentUser && currentConversation?.type === 'direct' && (
                                                                 <div className="flex items-center gap-2 mb-1">
                                                                     <span className="text-sm font-bold text-stone-900">
-                                                                        {participant}
+                                                                        {typeof participantName === 'string' ? participantName : 'Unknown'}
                                                                     </span>
                                                                     {message.sender?.role === 'landlord' && (
                                                                         <Crown className="h-3 w-3 text-amber-500" />
