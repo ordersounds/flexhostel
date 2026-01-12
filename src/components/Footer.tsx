@@ -30,17 +30,12 @@ const Footer = () => {
               Okitipupa's first premium student residence. We combine modern architecture with smart living to create the ultimate study environment.
             </p>
 
-            <div className="flex items-center gap-6 pt-2">
-              <div className="flex flex-col">
-                <span className="text-xl font-bold text-white tracking-tight">4.9/5</span>
-                <span className="text-[10px] uppercase font-bold text-stone-500 tracking-widest">Student Rating</span>
+              <div className="flex items-center gap-6 pt-2">
+                <div className="flex flex-col">
+                  <span className="text-xl font-bold text-white tracking-tight">4.9/5</span>
+                  <span className="text-[10px] uppercase font-bold text-stone-500 tracking-widest">Student Rating</span>
+                </div>
               </div>
-              <div className="w-px h-8 bg-stone-800" />
-              <div className="flex flex-col">
-                <span className="text-xl font-bold text-white tracking-tight">500+</span>
-                <span className="text-[10px] uppercase font-bold text-stone-500 tracking-widest">Global Community</span>
-              </div>
-            </div>
           </div>
 
           {/* Quick Links */}
@@ -92,13 +87,13 @@ const Footer = () => {
                 <div className="w-8 h-8 rounded-full bg-stone-900 flex items-center justify-center text-stone-500 flex-shrink-0">
                   <Phone className="h-4 w-4" />
                 </div>
-                <span className="text-stone-400 text-sm">+234 800 123 4567</span>
+                <span className="text-stone-400 text-sm">+447447222327</span>
               </li>
               <li className="flex items-center gap-4">
                 <div className="w-8 h-8 rounded-full bg-stone-900 flex items-center justify-center text-stone-500 flex-shrink-0">
                   <Mail className="h-4 w-4" />
                 </div>
-                <span className="text-stone-400 text-sm">hello@flexhostel.com</span>
+                <span className="text-stone-400 text-sm">flexhostel@proton.me</span>
               </li>
             </ul>
           </div>
