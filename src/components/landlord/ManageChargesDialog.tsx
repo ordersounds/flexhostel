@@ -8,10 +8,20 @@ import {
     DialogTrigger,
     DialogFooter
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Receipt, Trash2, Plus, Sparkles, AlertCircle, Loader2 } from "lucide-react";
+import { Receipt, Trash2, Plus, Sparkles, Loader2, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +41,13 @@ const ManageChargesDialog = ({ buildingId, buildingName, trigger }: ManageCharge
         amount: "",
         frequency: "monthly" as "monthly" | "yearly"
     });
+    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; chargeId: string | null; chargeName: string; hasPayments: boolean }>({
+        open: false,
+        chargeId: null,
+        chargeName: "",
+        hasPayments: false
+    });
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         if (open && buildingId) {
@@ -79,133 +96,235 @@ const ManageChargesDialog = ({ buildingId, buildingName, trigger }: ManageCharge
         setLoading(false);
     };
 
-    const handleDeleteCharge = async (chargeId: string) => {
-        const { error } = await supabase
-            .from("charges")
-            .update({ status: 'inactive' }) // Soft delete
-            .eq("id", chargeId);
+    const handleDeleteClick = async (chargeId: string, chargeName: string) => {
+        // Check if payments exist for this charge
+        const { count } = await supabase
+            .from("payments")
+            .select("id", { count: "exact", head: true })
+            .eq("charge_id", chargeId);
 
-        if (error) {
-            toast.error("Failed to remove charge");
+        setDeleteDialog({
+            open: true,
+            chargeId,
+            chargeName,
+            hasPayments: (count || 0) > 0
+        });
+    };
+
+    const handleConfirmDelete = async (hardDelete: boolean) => {
+        if (!deleteDialog.chargeId) return;
+        
+        setDeleting(true);
+
+        if (hardDelete && !deleteDialog.hasPayments) {
+            // Hard delete - only if no payments linked
+            const { error } = await supabase
+                .from("charges")
+                .delete()
+                .eq("id", deleteDialog.chargeId);
+
+            if (error) {
+                toast.error("Failed to delete charge: " + error.message);
+            } else {
+                toast.success("Charge permanently deleted");
+            }
         } else {
-            toast.success("Charge removed");
-            fetchCharges();
+            // Soft delete - mark as inactive
+            const { error } = await supabase
+                .from("charges")
+                .update({ status: 'inactive' })
+                .eq("id", deleteDialog.chargeId);
+
+            if (error) {
+                toast.error("Failed to remove charge");
+            } else {
+                toast.success("Charge deactivated");
+            }
         }
+
+        setDeleting(false);
+        setDeleteDialog({ open: false, chargeId: null, chargeName: "", hasPayments: false });
+        fetchCharges();
     };
 
     return (
-        <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                {trigger || <Button variant="outline">Manage Charges</Button>}
-            </DialogTrigger>
-            <DialogContent className="max-w-xl bg-white rounded-[3rem] border-stone-100 p-0 overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
-                <DialogHeader className="sr-only">
-                    <DialogTitle>Manage Building Charges</DialogTitle>
-                    <DialogDescription>Configure recurring fees for {buildingName}</DialogDescription>
-                </DialogHeader>
+        <>
+            <Dialog open={open} onOpenChange={setOpen}>
+                <DialogTrigger asChild>
+                    {trigger || <Button variant="outline">Manage Charges</Button>}
+                </DialogTrigger>
+                <DialogContent className="max-w-xl bg-white rounded-[3rem] border-stone-100 p-0 overflow-hidden shadow-2xl flex flex-col max-h-[85vh]">
+                    <DialogHeader className="sr-only">
+                        <DialogTitle>Manage Building Charges</DialogTitle>
+                        <DialogDescription>Configure recurring fees for {buildingName}</DialogDescription>
+                    </DialogHeader>
 
-                <div className="h-32 bg-stone-900 flex items-center justify-center relative overflow-hidden flex-shrink-0">
-                    <div className="absolute inset-0 opacity-20">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(25,180,180,0.4),transparent_70%)]" />
-                    </div>
-                    <div className="relative z-10 text-center">
-                        <div className="h-10 w-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center mx-auto mb-3 border border-white/20">
-                            <Receipt className="h-5 w-5 text-white" />
+                    <div className="h-32 bg-stone-900 flex items-center justify-center relative overflow-hidden flex-shrink-0">
+                        <div className="absolute inset-0 opacity-20">
+                            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(25,180,180,0.4),transparent_70%)]" />
                         </div>
-                        <h3 className="font-display text-xl font-bold text-white tracking-tight">Recurring Service Charges</h3>
-                        <p className="text-white/60 text-[10px] uppercase tracking-widest font-bold mt-1">{buildingName}</p>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto p-8 space-y-8">
-                    {/* Add New Charge Form */}
-                    <form onSubmit={handleAddCharge} className="bg-stone-50 rounded-3xl p-6 space-y-4 border border-stone-100">
-                        <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Add New Charge</h4>
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-stone-500">Charge Name</Label>
-                                <Input
-                                    placeholder="e.g. Cleaning"
-                                    className="bg-white border-stone-200 rounded-xl h-10 text-xs"
-                                    value={newCharge.name}
-                                    onChange={e => setNewCharge({ ...newCharge, name: e.target.value })}
-                                />
+                        <div className="relative z-10 text-center">
+                            <div className="h-10 w-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center mx-auto mb-3 border border-white/20">
+                                <Receipt className="h-5 w-5 text-white" />
                             </div>
-                            <div className="space-y-2">
-                                <Label className="text-xs font-bold text-stone-500">Amount (₦)</Label>
-                                <Input
-                                    type="number"
-                                    placeholder="5000"
-                                    className="bg-white border-stone-200 rounded-xl h-10 text-xs"
-                                    value={newCharge.amount}
-                                    onChange={e => setNewCharge({ ...newCharge, amount: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-2 col-span-2">
-                                <Label className="text-xs font-bold text-stone-500">Frequency</Label>
-                                <select
-                                    className="w-full h-10 px-3 rounded-xl border border-stone-200 bg-white text-xs outline-none"
-                                    value={newCharge.frequency}
-                                    onChange={e => setNewCharge({ ...newCharge, frequency: e.target.value as "monthly" | "yearly" })}
-                                >
-                                    <option value="monthly">Monthly Recurring</option>
-                                    <option value="yearly">Yearly Recurring</option>
-                                </select>
-                            </div>
+                            <h3 className="font-display text-xl font-bold text-white tracking-tight">Recurring Service Charges</h3>
+                            <p className="text-white/60 text-[10px] uppercase tracking-widest font-bold mt-1">{buildingName}</p>
                         </div>
-                        <Button
-                            type="submit"
-                            disabled={loading || !newCharge.name || !newCharge.amount}
-                            className="w-full rounded-xl bg-stone-900 h-10 font-bold uppercase tracking-widest text-[9px]"
-                        >
-                            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Plus className="h-3 w-3 mr-2" /> Add Charge Config</>}
-                        </Button>
-                    </form>
+                    </div>
 
-                    {/* Existing Charges List */}
-                    <div className="space-y-4">
-                        <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Active Configuration</h4>
-                        {charges.length === 0 ? (
-                            <div className="text-center py-8 text-stone-400 text-xs italic bg-white border border-dashed border-stone-200 rounded-2xl">
-                                No charges configured for this building yet.
+                    <div className="flex-1 overflow-y-auto p-8 space-y-8">
+                        {/* Add New Charge Form */}
+                        <form onSubmit={handleAddCharge} className="bg-stone-50 rounded-3xl p-6 space-y-4 border border-stone-100">
+                            <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Add New Charge</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-stone-500">Charge Name</Label>
+                                    <Input
+                                        placeholder="e.g. Cleaning"
+                                        className="bg-white border-stone-200 rounded-xl h-10 text-xs"
+                                        value={newCharge.name}
+                                        onChange={e => setNewCharge({ ...newCharge, name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-bold text-stone-500">Amount (₦)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="5000"
+                                        className="bg-white border-stone-200 rounded-xl h-10 text-xs"
+                                        value={newCharge.amount}
+                                        onChange={e => setNewCharge({ ...newCharge, amount: e.target.value })}
+                                    />
+                                </div>
+                                <div className="space-y-2 col-span-2">
+                                    <Label className="text-xs font-bold text-stone-500">Base Frequency</Label>
+                                    <select
+                                        className="w-full h-10 px-3 rounded-xl border border-stone-200 bg-white text-xs outline-none"
+                                        value={newCharge.frequency}
+                                        onChange={e => setNewCharge({ ...newCharge, frequency: e.target.value as "monthly" | "yearly" })}
+                                    >
+                                        <option value="monthly">Monthly (tenants can choose yearly)</option>
+                                        <option value="yearly">Yearly Only</option>
+                                    </select>
+                                    <p className="text-[10px] text-stone-400">
+                                        Tenants can pay monthly or yearly upfront. Their choice is locked after first payment.
+                                    </p>
+                                </div>
                             </div>
-                        ) : (
-                            <div className="space-y-3">
-                                {charges.map(charge => (
-                                    <div key={charge.id} className="flex items-center justify-between p-4 bg-white border border-stone-100 rounded-2xl shadow-sm group">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                                                <Sparkles className="h-4 w-4" />
+                            <Button
+                                type="submit"
+                                disabled={loading || !newCharge.name || !newCharge.amount}
+                                className="w-full rounded-xl bg-stone-900 h-10 font-bold uppercase tracking-widest text-[9px]"
+                            >
+                                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Plus className="h-3 w-3 mr-2" /> Add Charge Config</>}
+                            </Button>
+                        </form>
+
+                        {/* Existing Charges List */}
+                        <div className="space-y-4">
+                            <h4 className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">Active Configuration</h4>
+                            {charges.length === 0 ? (
+                                <div className="text-center py-8 text-stone-400 text-xs italic bg-white border border-dashed border-stone-200 rounded-2xl">
+                                    No charges configured for this building yet.
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {charges.map(charge => (
+                                        <div key={charge.id} className="flex items-center justify-between p-4 bg-white border border-stone-100 rounded-2xl shadow-sm group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                                                    <Sparkles className="h-4 w-4" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-stone-900 text-sm">{charge.name}</p>
+                                                    <p className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">
+                                                        ₦{Number(charge.amount).toLocaleString()} / {charge.frequency}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <p className="font-bold text-stone-900 text-sm">{charge.name}</p>
-                                                <p className="text-[10px] text-stone-500 font-bold uppercase tracking-wider">
-                                                    ₦{Number(charge.amount).toLocaleString()} / {charge.frequency}
-                                                </p>
-                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="icon"
+                                                className="h-8 w-8 text-stone-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                                                onClick={() => handleDeleteClick(charge.id, charge.name)}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
                                         </div>
-                                        <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            className="h-8 w-8 text-stone-300 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all"
-                                            onClick={() => handleDeleteCharge(charge.id)}
-                                        >
-                                            <Trash2 className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
 
-                <DialogFooter className="p-6 border-t border-stone-50 bg-stone-50/50">
-                    <Button variant="ghost" className="w-full rounded-2xl h-12 font-bold uppercase tracking-widest text-[10px]" onClick={() => setOpen(false)}>
-                        Done Configuration
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+                    <DialogFooter className="p-6 border-t border-stone-50 bg-stone-50/50">
+                        <Button variant="ghost" className="w-full rounded-2xl h-12 font-bold uppercase tracking-widest text-[10px]" onClick={() => setOpen(false)}>
+                            Done Configuration
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Delete Confirmation Dialog */}
+            <AlertDialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog(prev => ({ ...prev, open }))}>
+                <AlertDialogContent className="rounded-2xl">
+                    <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                            Delete "{deleteDialog.chargeName}"?
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="space-y-3">
+                            {deleteDialog.hasPayments ? (
+                                <>
+                                    <p>This charge has existing payment records and cannot be permanently deleted.</p>
+                                    <p className="text-amber-600 font-medium">
+                                        It will be deactivated instead, preserving payment history.
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p>Choose how to remove this charge:</p>
+                                    <ul className="list-disc pl-4 space-y-1 text-sm">
+                                        <li><strong>Deactivate:</strong> Hide the charge but keep for records</li>
+                                        <li><strong>Delete permanently:</strong> Remove completely (no payment history exists)</li>
+                                    </ul>
+                                </>
+                            )}
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="gap-2">
+                        <AlertDialogCancel className="rounded-xl">Cancel</AlertDialogCancel>
+                        {deleteDialog.hasPayments ? (
+                            <AlertDialogAction
+                                onClick={() => handleConfirmDelete(false)}
+                                disabled={deleting}
+                                className="rounded-xl bg-amber-500 hover:bg-amber-600"
+                            >
+                                {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Deactivate"}
+                            </AlertDialogAction>
+                        ) : (
+                            <>
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handleConfirmDelete(false)}
+                                    disabled={deleting}
+                                    className="rounded-xl"
+                                >
+                                    Deactivate
+                                </Button>
+                                <AlertDialogAction
+                                    onClick={() => handleConfirmDelete(true)}
+                                    disabled={deleting}
+                                    className="rounded-xl bg-red-500 hover:bg-red-600"
+                                >
+                                    {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Forever"}
+                                </AlertDialogAction>
+                            </>
+                        )}
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 };
 
