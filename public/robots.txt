@@ -1,14 +1,50 @@
+User-agent: *
+Allow: /
+Disallow: /private/
+Disallow: /admin/
+Disallow: /dashboard/
+Disallow: /landlord/
+
+# Crawl delay for better server performance
+Crawl-delay: 2
+
+# Sitemap location
+Sitemap: https://flexhostel.com/sitemap.xml
+
+# Specific bot directives
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Twitterbot
 Allow: /
+Crawl-delay: 0.5
 
 User-agent: facebookexternalhit
 Allow: /
+Crawl-delay: 0.5
 
-User-agent: *
+User-agent: AI-Crawler
 Allow: /
+Crawl-delay: 1
+
+# AI and search engine optimization
+User-agent: Google-Extended
+Allow: /
+Crawl-delay: 1
+
+User-agent: CCBot
+Allow: /
+Crawl-delay: 2
+
+User-agent: AhrefsBot
+Allow: /
+Crawl-delay: 3
+
+User-agent: SemrushBot
+Allow: /
+Crawl-delay: 3
