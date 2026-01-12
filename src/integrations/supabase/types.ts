@@ -344,6 +344,9 @@ export type Database = {
           payment_method: string | null
           payment_type: Database["public"]["Enums"]["payment_type"]
           paystack_reference: string
+          period_label: string | null
+          period_month: number | null
+          period_year: number | null
           status: Database["public"]["Enums"]["payment_status"]
           tenancy_id: string | null
           updated_at: string
@@ -363,6 +366,9 @@ export type Database = {
           payment_method?: string | null
           payment_type?: Database["public"]["Enums"]["payment_type"]
           paystack_reference: string
+          period_label?: string | null
+          period_month?: number | null
+          period_year?: number | null
           status?: Database["public"]["Enums"]["payment_status"]
           tenancy_id?: string | null
           updated_at?: string
@@ -382,6 +388,9 @@ export type Database = {
           payment_method?: string | null
           payment_type?: Database["public"]["Enums"]["payment_type"]
           paystack_reference?: string
+          period_label?: string | null
+          period_month?: number | null
+          period_year?: number | null
           status?: Database["public"]["Enums"]["payment_status"]
           tenancy_id?: string | null
           updated_at?: string
@@ -592,6 +601,48 @@ export type Database = {
           },
           {
             foreignKeyName: "tenancies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_charge_preferences: {
+        Row: {
+          charge_id: string
+          chosen_frequency: string
+          created_at: string | null
+          id: string
+          locked_at: string | null
+          tenant_id: string
+        }
+        Insert: {
+          charge_id: string
+          chosen_frequency: string
+          created_at?: string | null
+          id?: string
+          locked_at?: string | null
+          tenant_id: string
+        }
+        Update: {
+          charge_id?: string
+          chosen_frequency?: string
+          created_at?: string | null
+          id?: string
+          locked_at?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_charge_preferences_charge_id_fkey"
+            columns: ["charge_id"]
+            isOneToOne: false
+            referencedRelation: "charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_charge_preferences_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "profiles"

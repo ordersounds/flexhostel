@@ -22,11 +22,13 @@ import {
     Clock,
     Building,
     Home,
-    DollarSign
+    DollarSign,
+    Lock
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import EditTenancyDatesDialog from "./EditTenancyDatesDialog";
 
 interface TenantDetailDialogProps {
     tenant: any;
@@ -337,10 +339,20 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                             </div>
 
                             <div className="space-y-4">
-                                <h3 className="font-bold text-stone-900 text-lg flex items-center gap-2">
-                                    <Calendar className="h-5 w-5" />
-                                    Tenancy Period
-                                </h3>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-stone-900 text-lg flex items-center gap-2">
+                                        <Calendar className="h-5 w-5" />
+                                        Tenancy Period
+                                    </h3>
+                                    {tenantData.tenancy && (
+                                        <EditTenancyDatesDialog
+                                            tenancyId={tenantData.tenancy.id}
+                                            currentStartDate={tenantData.tenancy.start_date}
+                                            currentEndDate={tenantData.tenancy.end_date}
+                                            onUpdate={fetchTenantDetails}
+                                        />
+                                    )}
+                                </div>
 
                                 {tenantData.tenancy ? (
                                     <div className="space-y-3">

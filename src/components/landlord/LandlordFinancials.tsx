@@ -102,14 +102,28 @@ const LandlordFinancials = () => {
     };
 
     const getPaymentTypeLabel = (payment: any) => {
+        let label = '';
+        
         if (payment.payment_type === 'charge' && payment.charges?.name) {
-            return payment.charges.name;
+            label = payment.charges.name;
+        } else if (payment.payment_type === 'rent') {
+            label = 'Rent';
+        } else if (payment.payment_type === 'manual') {
+            label = 'Manual';
+        } else if (payment.charge_id) {
+            label = 'Charge';
+        } else if (payment.application_id) {
+            label = 'Application';
+        } else {
+            label = 'Other';
         }
-        if (payment.payment_type === 'rent') return 'Rent';
-        if (payment.payment_type === 'manual') return 'Manual';
-        if (payment.charge_id) return 'Charge';
-        if (payment.application_id) return 'Application';
-        return 'Other';
+        
+        // Append period label if available
+        if (payment.period_label) {
+            label += ` - ${payment.period_label}`;
+        }
+        
+        return label;
     };
 
     const getPaymentMethod = (payment: any) => {
