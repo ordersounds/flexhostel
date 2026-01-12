@@ -12,26 +12,24 @@ import { Calendar, Wallet, Lock, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import {
+    calculatePaymentAmount,
+    calculatePaymentPeriod,
+    createPaymentRecord,
+    finalizeSuccessfulPayment,
+    loadPaystackScript,
+    generatePaymentReference,
+    type Charge
+} from "@/lib/payment-utils";
 
 interface ChargePaymentDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    charge: {
-        id: string;
-        name: string;
-        amount: number;
-        frequency: "monthly" | "yearly";
-    };
+    charge: Charge;
     userId: string;
     userEmail: string;
     onPaymentComplete?: () => void;
 }
-
-const MONTH_NAMES = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
-];
 
 const ChargePaymentDialog = ({
     open,
@@ -71,39 +69,19 @@ const ChargePaymentDialog = ({
         setLoading(false);
     };
 
-    const handleSelectFrequency = async (freq: "monthly" | "yearly") => {
+    const handleSelectFrequency = (freq: "monthly" | "yearly") => {
         if (isLocked) return;
 
-        // Save preference to lock it
-        const { error } = await supabase
-            .from("tenant_charge_preferences")
-            .insert({
-                tenant_id: userId,
-                charge_id: charge.id,
-                chosen_frequency: freq,
-            });
-
-        if (error) {
-            toast.error("Failed to save preference: " + error.message);
-            return;
-        }
-
+        // Only set preference, don't lock yet - locking happens after successful payment
         setPreference(freq);
-        setIsLocked(true);
-        toast.success(`Payment plan locked to ${freq}`);
+        toast.success(`Payment plan selected: ${freq}`);
     };
 
-    const calculateAmount = () => {
-        if (!preference) return charge.amount;
-        return preference === "yearly" ? charge.amount * 12 : charge.amount;
-    };
-
-    const getPeriodLabel = () => {
-        const now = new Date();
-        if (preference === "yearly") {
-            return `${now.getFullYear()} Annual`;
-        }
-        return `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+    const getPaymentSummary = () => {
+        if (!preference) return null;
+        const amount = calculatePaymentAmount(charge, preference);
+        const period = calculatePaymentPeriod(preference);
+        return { amount, ...period };
     };
 
     const handlePayment = async () => {
@@ -113,48 +91,38 @@ const ChargePaymentDialog = ({
         }
 
         const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
-        const amount = calculateAmount();
-        const now = new Date();
-        
+        const reference = generatePaymentReference();
+
         setPaying(true);
 
-        // Create pending payment record
-        const reference = `CHARGE_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        
-        const { error: createError } = await supabase
-            .from("payments")
-            .insert({
-                user_id: userId,
-                amount: amount,
-                paystack_reference: reference,
-                payment_type: "charge",
-                charge_id: charge.id,
-                status: "pending",
-                period_month: preference === "monthly" ? now.getMonth() + 1 : null,
-                period_year: now.getFullYear(),
-                period_label: getPeriodLabel(),
-            });
+        try {
+            // Create pending payment record using utility
+            const createResult = await createPaymentRecord(userId, charge, preference, reference);
+            if (!createResult.success) {
+                throw new Error(createResult.error);
+            }
 
-        if (createError) {
-            console.error("Error creating payment:", createError);
-            toast.error("Failed to initiate payment");
+            // Load Paystack script if not already loaded
+            if (!(window as any).PaystackPop) {
+                await loadPaystackScript();
+            }
+
+            // Close our dialog BEFORE Paystack opens to prevent modal layering
+            onOpenChange(false);
+
+            // Initialize Paystack payment - it will handle its own modal
+            initiatePaystack(paystackKey, reference);
+
+        } catch (error) {
+            console.error("Payment initiation error:", error);
+            toast.error("Failed to initiate payment: " + (error as Error).message);
             setPaying(false);
-            return;
-        }
-
-        // Check if Paystack script is loaded
-        if (!(window as any).PaystackPop) {
-            const script = document.createElement("script");
-            script.src = "https://js.paystack.co/v1/inline.js";
-            script.async = true;
-            script.onload = () => initiatePaystack(amount, reference, paystackKey);
-            document.body.appendChild(script);
-        } else {
-            initiatePaystack(amount, reference, paystackKey);
         }
     };
 
-    const initiatePaystack = (amount: number, reference: string, key: string) => {
+    const initiatePaystack = (key: string, reference: string) => {
+        const amount = calculatePaymentAmount(charge, preference!);
+
         const handler = (window as any).PaystackPop.setup({
             key: key,
             email: userEmail,
@@ -162,15 +130,30 @@ const ChargePaymentDialog = ({
             currency: "NGN",
             ref: reference,
             callback: (response: any) => {
-                toast.success("Payment successful!");
-                onPaymentComplete?.();
-                onOpenChange(false);
+                // Finalize payment using utility - Paystack requires synchronous callback
+                finalizeSuccessfulPayment(userId, charge.id, preference!, reference)
+                    .then((finalizeResult) => {
+                        if (finalizeResult.success) {
+                            toast.success("Payment successful! Your payment plan has been locked.");
+                            onPaymentComplete?.();
+                            onOpenChange(false);
+                        } else {
+                            toast.error(finalizeResult.error || "Payment completed but there was an error processing it");
+                            onOpenChange(false);
+                        }
+                    })
+                    .catch((error) => {
+                        console.error("Payment callback error:", error);
+                        toast.error("Payment completed but there was an error processing it");
+                        onOpenChange(false);
+                    });
             },
             onClose: () => {
                 toast.info("Payment cancelled");
                 setPaying(false);
             },
         });
+
         handler.openIframe();
     };
 
@@ -265,26 +248,29 @@ const ChargePaymentDialog = ({
                         </div>
 
                         {/* Payment Summary */}
-                        {preference && (
-                            <div className="p-4 bg-stone-50 rounded-xl border border-stone-100 space-y-3">
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                                        Amount Due
-                                    </span>
-                                    <span className="font-display text-2xl font-bold text-stone-900">
-                                        ₦{calculateAmount().toLocaleString()}
-                                    </span>
+                        {(() => {
+                            const summary = getPaymentSummary();
+                            return summary ? (
+                                <div className="p-4 bg-stone-50 rounded-xl border border-stone-100 space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                                            Amount Due
+                                        </span>
+                                        <span className="font-display text-2xl font-bold text-stone-900">
+                                            ₦{summary.amount.toLocaleString()}
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
+                                            Period
+                                        </span>
+                                        <span className="font-bold text-stone-700">
+                                            {summary.periodLabel}
+                                        </span>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
-                                        Period
-                                    </span>
-                                    <span className="font-bold text-stone-700">
-                                        {getPeriodLabel()}
-                                    </span>
-                                </div>
-                            </div>
-                        )}
+                            ) : null;
+                        })()}
 
                         {/* Pay Button */}
                         <Button
@@ -297,7 +283,7 @@ const ChargePaymentDialog = ({
                             ) : (
                                 <>
                                     <Wallet className="h-4 w-4 mr-2" />
-                                    Pay ₦{calculateAmount().toLocaleString()}
+                                    Pay ₦{getPaymentSummary()?.amount.toLocaleString() || '0'}
                                 </>
                             )}
                         </Button>

@@ -5,6 +5,7 @@ import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import MessageCenter from "@/components/MessageCenter";
+import ChargePaymentDialog from "@/components/tenant/ChargePaymentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
@@ -44,6 +45,8 @@ const Dashboard = () => {
   const [landlordId, setLandlordId] = useState<string | null>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [payingItem, setPayingItem] = useState<string | null>(null);
+  const [selectedCharge, setSelectedCharge] = useState<any>(null);
+  const [isChargeDialogOpen, setIsChargeDialogOpen] = useState(false);
 
   // Derived user stage for accurate Product Owner logic
   const userStage = tenancy
@@ -219,12 +222,12 @@ const Dashboard = () => {
     const paystackKey = import.meta.env.VITE_PAYSTACK_PUBLIC_KEY || "pk_test_placeholder";
     const amount = paymentType === 'rent' ? application.rooms.price : charge?.amount;
     const itemId = paymentType === 'rent' ? 'rent' : charge?.id;
-    
+
     setPayingItem(itemId);
 
     // Create pending payment record in database first
     const reference = `FLEX_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    
+
     const paymentData: any = {
       user_id: user.id,
       amount: amount,
@@ -260,6 +263,24 @@ const Dashboard = () => {
     } else {
       initiatePaystack(amount, reference, paystackKey, paymentType);
     }
+  };
+
+  const handleChargePayment = (charge: any) => {
+    setSelectedCharge(charge);
+    setIsChargeDialogOpen(true);
+  };
+
+  const handlePaymentComplete = () => {
+    // Refresh payments data after successful payment
+    supabase
+      .from("payments")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .then(({ data }) => {
+        setPayments(data || []);
+        toast.success("Payment completed successfully!");
+      });
   };
 
   const initiatePaystack = (amount: number, reference: string, key: string, paymentType: string) => {
@@ -471,40 +492,62 @@ const Dashboard = () => {
                               <h4 className="text-[10px] font-bold text-primary uppercase tracking-[0.2em]">Current Building Charges</h4>
                             </div>
                             <div className="space-y-3">
-                              {charges.map(charge => (
-                                <div key={charge.id} className="group">
-                                  <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10 group-hover:border-primary/20 transition-all">
-                                    <div className="flex-1">
-                                      <p className="font-bold text-white group-hover:text-primary transition-colors">{charge.name}</p>
-                                      <p className="text-white/60 text-sm mt-0.5">₦{charge.amount.toLocaleString()} • {charge.frequency}</p>
-                                    </div>
-                                    {isChargePaid(charge.id) ? (
-                                      <Badge className="bg-green-500/20 text-green-300 border border-green-500/30 text-[8px] tracking-widest font-bold uppercase px-3 py-1">
-                                        <CheckCircle className="h-3 w-3 mr-1" /> Paid
-                                      </Badge>
-                                    ) : (
-                                      <Button
-                                        onClick={() => handlePayment('charge', applications[0] || {}, charge)}
-                                        disabled={payingItem === charge.id}
-                                        size="sm"
-                                        className="bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest px-4 py-2 transition-all"
-                                      >
-                                        {payingItem === charge.id ? (
-                                          <>
-                                            <span className="h-2 w-2 border border-white border-t-transparent rounded-full animate-spin inline-block mr-2" />
-                                            Processing...
-                                          </>
-                                        ) : (
-                                          <>
-                                            <ArrowUpRight className="h-3 w-3 mr-1" />
-                                            Pay Now
-                                          </>
+                              {charges.map(charge => {
+                                const chargePayment = payments.find(p => p.charge_id === charge.id && p.status === 'success');
+                                const isPaid = !!chargePayment;
+                                const isAnnual = chargePayment && chargePayment.period_month === null;
+
+                                return (
+                                  <div key={charge.id} className="group">
+                                    <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10 group-hover:border-primary/20 transition-all">
+                                      <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <p className="font-bold text-white group-hover:text-primary transition-colors">{charge.name}</p>
+                                          {isPaid && (
+                                            <Badge className={`text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 ${
+                                              isAnnual
+                                                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                                : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                            }`}>
+                                              {isAnnual ? 'Annual' : 'Monthly'}
+                                            </Badge>
+                                          )}
+                                        </div>
+                                        <p className="text-white/60 text-sm mt-0.5">₦{charge.amount.toLocaleString()} • {charge.frequency}</p>
+                                        {isPaid && isAnnual && (
+                                          <p className="text-white/40 text-[10px] mt-1">
+                                            Covered until Dec 31, {chargePayment.period_year}
+                                          </p>
                                         )}
-                                      </Button>
-                                    )}
+                                      </div>
+                                      {isPaid ? (
+                                        <Badge className="bg-green-500/20 text-green-300 border border-green-500/30 text-[8px] tracking-widest font-bold uppercase px-3 py-1">
+                                          <CheckCircle className="h-3 w-3 mr-1" /> Paid
+                                        </Badge>
+                                      ) : (
+                                        <Button
+                                          onClick={() => handleChargePayment(charge)}
+                                          disabled={payingItem === charge.id}
+                                          size="sm"
+                                          className="bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest px-4 py-2 transition-all"
+                                        >
+                                          {payingItem === charge.id ? (
+                                            <>
+                                              <span className="h-2 w-2 border border-white border-t-transparent rounded-full animate-spin inline-block mr-2" />
+                                              Processing...
+                                            </>
+                                          ) : (
+                                            <>
+                                              <ArrowUpRight className="h-3 w-3 mr-1" />
+                                              Pay Now
+                                            </>
+                                          )}
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -869,46 +912,68 @@ const Dashboard = () => {
 
                           {charges.length > 0 ? (
                             <div className="space-y-4">
-                              {charges.map(charge => (
-                                <div key={charge.id} className="group">
-                                  <div className="flex flex-col md:flex-row justify-between items-center gap-4 p-5 bg-stone-50 rounded-2xl border border-stone-100 group-hover:border-primary/20 transition-all">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-3 mb-1">
-                                        <CreditCard className="h-5 w-5 text-stone-400 group-hover:text-primary transition-colors" />
-                                        <div className="min-w-0">
-                                          <p className="font-bold text-stone-900 truncate group-hover:text-primary transition-colors">{charge.name}</p>
-                                          <p className="text-stone-500 text-sm truncate">₦{charge.amount.toLocaleString()} • {charge.frequency}</p>
+                              {charges.map(charge => {
+                                const chargePayment = payments.find(p => p.charge_id === charge.id && p.status === 'success');
+                                const isPaid = !!chargePayment;
+                                const isAnnual = chargePayment && chargePayment.period_month === null;
+
+                                return (
+                                  <div key={charge.id} className="group">
+                                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 p-5 bg-stone-50 rounded-2xl border border-stone-100 group-hover:border-primary/20 transition-all">
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-3 mb-1">
+                                          <CreditCard className="h-5 w-5 text-stone-400 group-hover:text-primary transition-colors" />
+                                          <div className="min-w-0 flex-1">
+                                            <div className="flex items-center gap-2 mb-1">
+                                              <p className="font-bold text-stone-900 truncate group-hover:text-primary transition-colors">{charge.name}</p>
+                                              {isPaid && (
+                                                <Badge className={`text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 ${
+                                                  isAnnual
+                                                    ? 'bg-blue-500/20 text-blue-700 border border-blue-500/30'
+                                                    : 'bg-purple-500/20 text-purple-700 border border-purple-500/30'
+                                                }`}>
+                                                  {isAnnual ? 'Annual' : 'Monthly'}
+                                                </Badge>
+                                              )}
+                                            </div>
+                                            <p className="text-stone-500 text-sm truncate">₦{charge.amount.toLocaleString()} • {charge.frequency}</p>
+                                            {isPaid && isAnnual && (
+                                              <p className="text-stone-400 text-[10px] mt-1">
+                                                Covered until Dec 31, {chargePayment.period_year}
+                                              </p>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
-                                    </div>
-                                    <div className="flex-shrink-0">
-                                      {isChargePaid(charge.id) ? (
-                                        <Badge className="bg-green-50 text-green-700 border border-green-100 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5">
-                                          <CheckCircle className="h-3.5 w-3.5 mr-1" /> Paid
-                                        </Badge>
-                                      ) : (
-                                        <Button
-                                          onClick={() => handlePayment('charge', applications[0] || {}, charge)}
-                                          disabled={payingItem === charge.id}
-                                          className="h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest px-4 transition-all"
-                                        >
-                                          {payingItem === charge.id ? (
-                                            <>
-                                              <span className="h-2 w-2 border border-white border-t-transparent rounded-full animate-spin inline-block mr-2" />
-                                              Processing...
-                                            </>
-                                          ) : (
-                                            <>
-                                              <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
-                                              Pay Now
-                                            </>
-                                          )}
-                                        </Button>
-                                      )}
+                                      <div className="flex-shrink-0">
+                                        {isPaid ? (
+                                          <Badge className="bg-green-50 text-green-700 border border-green-100 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5">
+                                            <CheckCircle className="h-3.5 w-3.5 mr-1" /> Paid
+                                          </Badge>
+                                        ) : (
+                                          <Button
+                                            onClick={() => handleChargePayment(charge)}
+                                            disabled={payingItem === charge.id}
+                                            className="h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest px-4 transition-all"
+                                          >
+                                            {payingItem === charge.id ? (
+                                              <>
+                                                <span className="h-2 w-2 border border-white border-t-transparent rounded-full animate-spin inline-block mr-2" />
+                                                Processing...
+                                              </>
+                                            ) : (
+                                              <>
+                                                <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
+                                                Pay Now
+                                              </>
+                                            )}
+                                          </Button>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           ) : (
                             <div className="p-8 text-center border-2 border-dashed border-stone-100 rounded-2xl bg-stone-50/50">
@@ -931,35 +996,52 @@ const Dashboard = () => {
                               {payments
                                 .filter(p => p.status === 'success')
                                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                                .map(payment => (
-                                  <div key={payment.id} className="p-5 bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-md transition-all">
-                                    <div className="flex justify-between items-start gap-4">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-2">
-                                          {payment.payment_type === 'rent' ? (
-                                            <Building2 className="h-5 w-5 text-primary" />
-                                          ) : (
-                                            <CreditCard className="h-5 w-5 text-stone-400" />
-                                          )}
-                                          <div>
-                                            <p className="font-bold text-stone-900 capitalize">
-                                              {payment.payment_type} Payment
-                                            </p>
-                                            <p className="text-stone-500 text-xs">
-                                              {new Date(payment.created_at).toLocaleString()} • {payment.paystack_reference}
-                                            </p>
+                                .map(payment => {
+                                  // Determine payment frequency from period data
+                                  const isAnnual = payment.period_month === null;
+                                  const frequencyLabel = isAnnual ? 'Annual' : 'Monthly';
+                                  const frequencyColor = isAnnual ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-purple-50 text-purple-700 border-purple-100';
+
+                                  return (
+                                    <div key={payment.id} className="p-5 bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-md transition-all">
+                                      <div className="flex justify-between items-start gap-4">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-3 mb-2">
+                                            {payment.payment_type === 'rent' ? (
+                                              <Building2 className="h-5 w-5 text-primary" />
+                                            ) : (
+                                              <CreditCard className="h-5 w-5 text-stone-400" />
+                                            )}
+                                            <div className="flex-1">
+                                              <div className="flex items-center gap-2 mb-1">
+                                                <p className="font-bold text-stone-900 capitalize">
+                                                  {payment.payment_type} Payment
+                                                </p>
+                                                <Badge className={`${frequencyColor} text-[7px] font-bold uppercase tracking-widest px-2 py-0.5`}>
+                                                  {frequencyLabel}
+                                                </Badge>
+                                              </div>
+                                              <p className="text-stone-500 text-xs">
+                                                {new Date(payment.created_at).toLocaleString()} • {payment.paystack_reference}
+                                              </p>
+                                              {isAnnual && (
+                                                <p className="text-stone-400 text-[10px] font-medium mt-1">
+                                                  Covers until Dec 31, {payment.period_year}
+                                                </p>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                      <div className="text-right">
-                                        <p className="text-lg font-bold text-stone-900">₦{payment.amount.toLocaleString()}</p>
-                                        <Badge className="bg-green-50 text-green-700 border border-green-100 text-[8px] font-bold uppercase tracking-widest px-2 py-1 mt-1">
-                                          <CheckCircle className="h-3 w-3 mr-1" /> Success
-                                        </Badge>
+                                        <div className="text-right">
+                                          <p className="text-lg font-bold text-stone-900">₦{payment.amount.toLocaleString()}</p>
+                                          <Badge className="bg-green-50 text-green-700 border border-green-100 text-[8px] font-bold uppercase tracking-widest px-2 py-1 mt-1">
+                                            <CheckCircle className="h-3 w-3 mr-1" /> Success
+                                          </Badge>
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
+                                  );
+                                })}
                             </div>
                           ) : (
                             <div className="p-8 text-center border-2 border-dashed border-stone-100 rounded-2xl bg-stone-50/50">
@@ -994,6 +1076,18 @@ const Dashboard = () => {
         </div>
       </main>
       <Footer />
+
+      {/* Charge Payment Dialog */}
+      {selectedCharge && (
+        <ChargePaymentDialog
+          open={isChargeDialogOpen}
+          onOpenChange={setIsChargeDialogOpen}
+          charge={selectedCharge}
+          userId={user.id}
+          userEmail={user.email}
+          onPaymentComplete={handlePaymentComplete}
+        />
+      )}
     </div>
   );
 };
