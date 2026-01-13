@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { isPeriodPaid, getExistingPendingPayment } from "./charge-status";
 
 export interface Charge {
     id: string;
@@ -11,7 +12,15 @@ export interface PaymentCalculation {
     amount: number;
     periodLabel: string;
     periodMonth: number | null;
+    periodMonthEnd: number | null;
     periodYear: number;
+}
+
+export interface PaymentPeriod {
+    month: number | null;
+    monthEnd: number | null;
+    year: number;
+    label: string;
 }
 
 /**
@@ -42,41 +51,84 @@ export const calculatePaymentAmount = (
 
 /**
  * Determines payment period information for database recording
- * Senior Engineer Note: Ensures consistent period tracking for recurring payments
+ * Senior Engineer Note: Now supports specific period selection and yearly ranges
  */
 export const calculatePaymentPeriod = (
-    userPreference: 'monthly' | 'yearly'
-): { periodMonth: number | null; periodYear: number; periodLabel: string } => {
+    userPreference: 'monthly' | 'yearly',
+    specificPeriod?: PaymentPeriod
+): PaymentCalculation => {
     const now = new Date();
+
+    // If specific period provided, use it
+    if (specificPeriod) {
+        const amount = 0; // Amount will be calculated separately
+        return {
+            amount,
+            periodMonth: specificPeriod.month,
+            periodMonthEnd: specificPeriod.monthEnd,
+            periodYear: specificPeriod.year,
+            periodLabel: specificPeriod.label
+        };
+    }
 
     if (userPreference === 'yearly') {
         return {
-            periodMonth: null,
+            amount: 0,
+            periodMonth: 1, // January
+            periodMonthEnd: 12, // December
             periodYear: now.getFullYear(),
-            periodLabel: `${now.getFullYear()} Annual`
+            periodLabel: `${now.getFullYear()} Annual (Jan-Dec)`
         };
     } else {
+        const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(now);
         return {
+            amount: 0,
             periodMonth: now.getMonth() + 1, // JavaScript months are 0-indexed
+            periodMonthEnd: null, // Single month, no end
             periodYear: now.getFullYear(),
-            periodLabel: `${new Intl.DateTimeFormat('en-US', { month: 'long' }).format(now)} ${now.getFullYear()}`
+            periodLabel: `${monthName} ${now.getFullYear()}`
         };
     }
 };
 
 /**
- * Creates a payment record in the database
- * Senior Engineer Note: Centralized payment creation with proper error handling
+ * Creates a payment record in the database with duplicate prevention
+ * Senior Engineer Note: Validates period isn't already paid and reuses pending payments
  */
 export const createPaymentRecord = async (
     userId: string,
     charge: Charge,
     userPreference: 'monthly' | 'yearly',
-    reference: string
-): Promise<{ success: boolean; error?: string }> => {
+    reference: string,
+    specificPeriod?: PaymentPeriod
+): Promise<{ success: boolean; error?: string; existingReference?: string }> => {
     try {
         const amount = calculatePaymentAmount(charge, userPreference);
-        const period = calculatePaymentPeriod(userPreference);
+        const period = calculatePaymentPeriod(userPreference, specificPeriod);
+
+        // Check if this period is already paid (duplicate prevention)
+        if (period.periodMonth !== null && period.periodYear) {
+            const alreadyPaid = await isPeriodPaid(
+                userId,
+                charge.id,
+                period.periodMonth,
+                period.periodYear
+            );
+            if (alreadyPaid) {
+                return { success: false, error: "This period is already paid" };
+            }
+        }
+
+        // Check for existing pending payment for same period (reuse it)
+        const existingPending = await getExistingPendingPayment(
+            userId,
+            charge.id,
+            period.periodMonth,
+            period.periodYear
+        );
+        if (existingPending.exists && existingPending.reference) {
+            return { success: true, existingReference: existingPending.reference };
+        }
 
         const { error } = await supabase
             .from("payments")
@@ -88,6 +140,7 @@ export const createPaymentRecord = async (
                 charge_id: charge.id,
                 status: "pending",
                 period_month: period.periodMonth,
+                period_month_end: period.periodMonthEnd,
                 period_year: period.periodYear,
                 period_label: period.periodLabel,
                 currency: "NGN"

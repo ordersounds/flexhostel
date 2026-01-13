@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -9,6 +9,10 @@ import ChargePaymentDialog from "@/components/tenant/ChargePaymentDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
 import { toast } from "sonner";
+import {
+  getChargePaymentStatus,
+  type ChargePaymentStatus
+} from "@/lib/charge-status";
 import {
   Home,
   CreditCard,
@@ -27,7 +31,8 @@ import {
   Send,
   Image as ImageIcon,
   Sparkles,
-  ArrowUpRight
+  ArrowUpRight,
+  AlertCircle
 } from "lucide-react";
 
 const Dashboard = () => {
@@ -42,6 +47,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState<"overview" | "applications" | "payments" | "messages" | "announcements">(initialTab);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [charges, setCharges] = useState<any[]>([]);
+  const [chargeStatuses, setChargeStatuses] = useState<Map<string, ChargePaymentStatus>>(new Map());
   const [landlordId, setLandlordId] = useState<string | null>(null);
   const [payments, setPayments] = useState<any[]>([]);
   const [payingItem, setPayingItem] = useState<string | null>(null);
@@ -268,6 +274,13 @@ const Dashboard = () => {
   const handleChargePayment = (charge: any) => {
     setSelectedCharge(charge);
     setIsChargeDialogOpen(true);
+  };
+
+  const handleChargeDialogClose = (open: boolean) => {
+    setIsChargeDialogOpen(open);
+    if (!open) {
+      setSelectedCharge(null);
+    }
   };
 
   const handlePaymentComplete = () => {
@@ -1081,10 +1094,11 @@ const Dashboard = () => {
       {selectedCharge && (
         <ChargePaymentDialog
           open={isChargeDialogOpen}
-          onOpenChange={setIsChargeDialogOpen}
+          onOpenChange={handleChargeDialogClose}
           charge={selectedCharge}
           userId={user.id}
           userEmail={user.email}
+          tenancyStartDate={tenancy?.start_date}
           onPaymentComplete={handlePaymentComplete}
         />
       )}
