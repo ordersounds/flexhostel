@@ -346,6 +346,7 @@ export type Database = {
           paystack_reference: string
           period_label: string | null
           period_month: number | null
+          period_month_end: number | null
           period_year: number | null
           status: Database["public"]["Enums"]["payment_status"]
           tenancy_id: string | null
@@ -368,6 +369,7 @@ export type Database = {
           paystack_reference: string
           period_label?: string | null
           period_month?: number | null
+          period_month_end?: number | null
           period_year?: number | null
           status?: Database["public"]["Enums"]["payment_status"]
           tenancy_id?: string | null
@@ -390,6 +392,7 @@ export type Database = {
           paystack_reference?: string
           period_label?: string | null
           period_month?: number | null
+          period_month_end?: number | null
           period_year?: number | null
           status?: Database["public"]["Enums"]["payment_status"]
           tenancy_id?: string | null
