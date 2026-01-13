@@ -23,8 +23,15 @@ import {
     Building,
     Home,
     DollarSign,
-    Lock
+    Lock,
+    CalendarDays,
+    Wallet,
+    Info
 } from "lucide-react";
+import {
+    getChargePaymentStatus,
+    type ChargePaymentStatus
+} from "@/lib/charge-status";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -90,101 +97,42 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                 .eq("building_id", tenancyData?.rooms?.buildings?.id);
 
             // Check payment status and calculate arrears for each charge
+            // Check payment status and calculate arrears for each charge
             const chargesWithStatus = await Promise.all(
                 (chargeData || []).map(async (charge) => {
-                    // Get all successful payments for this charge by this tenant
-                    const { data: chargePayments } = await supabase
-                        .from("payments")
-                        .select("*")
-                        .eq("charge_id", charge.id)
-                        .eq("user_id", tenant.id)
-                        .eq("status", "success")
-                        .order("created_at", { ascending: false });
+                    // Use the unified status calculation
+                    // Need tenancy start date for accurate calculations
+                    const startDate = tenancyData?.start_date || new Date().toISOString();
 
-                    const lastPayment = chargePayments?.[0];
-                    const isPaid = !!lastPayment;
-
-                    // Calculate arrears for recurring charges
-                    let arrearsCount = 0;
-                    let outstandingAmount = 0;
-                    let lastPaidPeriod = null;
-
-                    if (charge.frequency === 'monthly') {
-                        // For monthly charges, calculate unpaid months
-                        const currentDate = new Date();
-                        const currentMonth = currentDate.getMonth();
-                        const currentYear = currentDate.getFullYear();
-
-                        // Find the earliest payment to establish baseline
-                        const earliestPayment = chargePayments?.[chargePayments.length - 1];
-                        let startMonth, startYear;
-
-                        if (earliestPayment) {
-                            const paymentDate = new Date(earliestPayment.created_at);
-                            startMonth = paymentDate.getMonth();
-                            startYear = paymentDate.getFullYear();
-                            lastPaidPeriod = paymentDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
-                        } else {
-                            // If no payments, assume tenancy start
-                            if (tenancyData) {
-                                const tenancyStart = new Date(tenancyData.start_date);
-                                startMonth = tenancyStart.getMonth();
-                                startYear = tenancyStart.getFullYear();
-                            } else {
-                                startMonth = currentMonth;
-                                startYear = currentYear;
-                            }
-                        }
-
-                        // Count unpaid months from start until now
-                        let tempMonth = startMonth;
-                        let tempYear = startYear;
-
-                        while (tempYear < currentYear || (tempYear === currentYear && tempMonth <= currentMonth)) {
-                            // Check if this month has been paid
-                            const monthPaid = chargePayments?.some(payment => {
-                                const paymentDate = new Date(payment.created_at);
-                                return paymentDate.getMonth() === tempMonth && paymentDate.getFullYear() === tempYear;
-                            });
-
-                            if (!monthPaid) {
-                                arrearsCount++;
-                                outstandingAmount += charge.amount;
-                            }
-
-                            tempMonth++;
-                            if (tempMonth > 11) {
-                                tempMonth = 0;
-                                tempYear++;
-                            }
-                        }
-                    } else if (charge.frequency === 'yearly') {
-                        // For yearly charges, check if current year is paid
-                        const currentYear = new Date().getFullYear();
-                        const yearPaid = chargePayments?.some(payment => {
-                            const paymentDate = new Date(payment.created_at);
-                            return paymentDate.getFullYear() === currentYear;
-                        });
-
-                        if (!yearPaid) {
-                            arrearsCount = 1;
-                            outstandingAmount = charge.amount;
-                        }
-
-                        if (lastPayment) {
-                            lastPaidPeriod = new Date(lastPayment.created_at).getFullYear().toString();
-                        }
+                    try {
+                        const status = await getChargePaymentStatus(
+                            tenant.id,
+                            charge.id,
+                            charge.name,
+                            charge.amount,
+                            charge.frequency,
+                            startDate
+                        );
+                        return status;
+                    } catch (err) {
+                        console.error(`Failed to calc status for charge ${charge.id}`, err);
+                        // Fallback minimal object (should rarely happen)
+                        return {
+                            chargeId: charge.id,
+                            chargeName: charge.name,
+                            chargeAmount: charge.amount,
+                            chargeFrequency: charge.frequency,
+                            chosenFrequency: null,
+                            isLocked: false,
+                            lockedAt: null,
+                            currentPeriodPaid: false,
+                            paidPeriods: [],
+                            unpaidPeriods: [],
+                            nextPaymentDue: null,
+                            totalArrears: 0,
+                            isUpToDate: false
+                        } as ChargePaymentStatus;
                     }
-
-                    return {
-                        ...charge,
-                        lastPayment,
-                        isPaid,
-                        paymentStatus: isPaid ? "paid" : "unpaid",
-                        arrearsCount,
-                        outstandingAmount,
-                        lastPaidPeriod
-                    };
                 })
             );
 
@@ -326,7 +274,7 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                         <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-xl">
                                             <DollarSign className="h-5 w-5 text-stone-400" />
                                             <div>
-                                                <p className="text-sm text-stone-500">Monthly Rent</p>
+                                                <p className="text-sm text-stone-500">Yearly Rent</p>
                                                 <p className="font-semibold text-stone-900">{formatCurrency(tenantData.tenancy.rooms?.price || 0)}</p>
                                             </div>
                                         </div>
@@ -411,47 +359,106 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
 
                             {tenantData.buildingCharges && tenantData.buildingCharges.length > 0 ? (
                                 <div className="space-y-3">
-                                    {tenantData.buildingCharges.map((charge: any) => (
-                                        <div key={charge.id} className="flex items-center justify-between p-4 bg-stone-50 rounded-xl border border-stone-200">
-                                            <div className="flex items-center gap-4">
-                                                <div className={cn(
-                                                    "h-10 w-10 rounded-full flex items-center justify-center",
-                                                    charge.isPaid ? "bg-emerald-100" : "bg-red-100"
-                                                )}>
-                                                    {charge.isPaid ? (
-                                                        <CheckCircle2 className="h-5 w-5 text-emerald-600" />
-                                                    ) : (
-                                                        <AlertTriangle className="h-5 w-5 text-red-600" />
-                                                    )}
+                                    {tenantData.buildingCharges.map((charge: ChargePaymentStatus) => (
+                                        <div key={charge.chargeId} className="p-5 bg-stone-50 rounded-[1.5rem] border border-stone-200">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={cn(
+                                                        "h-10 w-10 rounded-xl flex items-center justify-center shadow-sm",
+                                                        charge.isUpToDate ? "bg-emerald-100/50" : "bg-white border border-stone-100"
+                                                    )}>
+                                                        {charge.isUpToDate ? (
+                                                            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                                                        ) : (
+                                                            <AlertTriangle className="h-5 w-5 text-amber-500" />
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-bold text-stone-900 text-lg">{charge.chargeName}</h4>
+                                                        <div className="flex items-center gap-2 mt-0.5">
+                                                            <Badge className={cn(
+                                                                "text-[9px] font-bold uppercase tracking-widest px-1.5 py-0",
+                                                                charge.chosenFrequency === 'yearly'
+                                                                    ? "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                                                                    : "bg-purple-50 text-purple-600 hover:bg-purple-100"
+                                                            )}>
+                                                                {charge.chosenFrequency || charge.chargeFrequency}
+                                                            </Badge>
+                                                            {charge.isLocked && (
+                                                                <span className="flex items-center text-[10px] text-stone-400 font-medium bg-stone-100 px-1.5 py-0.5 rounded-md">
+                                                                    <Lock className="h-2.5 w-2.5 mr-1" />
+                                                                    Locked
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                <div>
-                                                    <p className="font-semibold text-stone-900">{charge.name}</p>
-                                                    <p className="text-sm text-stone-500">
-                                                        {charge.frequency === 'monthly' ? 'Monthly' : 'Yearly'} • {formatCurrency(charge.amount)}
-                                                    </p>
-                                                    {charge.arrearsCount > 0 && (
-                                                        <p className="text-xs text-red-600 font-medium">
-                                                            {charge.arrearsCount} {charge.frequency === 'monthly' ? 'month' : 'year'}{charge.arrearsCount > 1 ? 's' : ''} unpaid
-                                                        </p>
-                                                    )}
-                                                    {charge.lastPaidPeriod && (
-                                                        <p className="text-xs text-stone-400">
-                                                            Last paid: {charge.lastPaidPeriod}
-                                                        </p>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-stone-400 font-bold uppercase tracking-widest mb-1">Status</p>
+                                                    {charge.isUpToDate ? (
+                                                        <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-none">
+                                                            Paid Up To Date
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge className="bg-amber-50 text-amber-600 hover:bg-amber-100 border-none">
+                                                            {charge.unpaidPeriods.length} Period{charge.unpaidPeriods.length > 1 ? 's' : ''} Due
+                                                        </Badge>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <Badge className={cn(
-                                                    "text-xs font-bold uppercase tracking-widest",
-                                                    charge.isPaid ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                                                )}>
-                                                    {charge.isPaid ? "Paid" : "Unpaid"}
-                                                </Badge>
-                                                {!charge.isPaid && (
-                                                    <p className="text-sm font-medium text-stone-600 mt-1">
-                                                        {formatCurrency(charge.amount)} due
-                                                    </p>
+
+                                            {/* Details Section */}
+                                            <div className="bg-white rounded-xl p-3 border border-stone-100 space-y-3">
+                                                {/* Arrears / Outstanding */}
+                                                {!charge.isUpToDate && (
+                                                    <div className="flex justify-between items-center pb-3 border-b border-stone-100">
+                                                        <span className="text-xs font-semibold text-stone-500 flex items-center gap-1.5">
+                                                            <Wallet className="h-3.5 w-3.5" />
+                                                            Outstanding Amount
+                                                        </span>
+                                                        <span className="font-bold text-red-600 text-base">
+                                                            {formatCurrency(charge.totalArrears)}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {/* Unpaid Periods List */}
+                                                {!charge.isUpToDate && charge.unpaidPeriods.length > 0 && (
+                                                    <div className="pt-1">
+                                                        <p className="text-[10px] uppercase tracking-widest font-bold text-stone-400 mb-2">
+                                                            Unpaid Periods
+                                                        </p>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {charge.unpaidPeriods.slice(0, 4).map((period, idx) => (
+                                                                <Badge key={idx} variant="outline" className="text-stone-600 text-[10px] border-stone-200 bg-stone-50">
+                                                                    {period.label}
+                                                                </Badge>
+                                                            ))}
+                                                            {charge.unpaidPeriods.length > 4 && (
+                                                                <Badge variant="outline" className="text-stone-400 text-[10px] border-dashed border-stone-300">
+                                                                    +{charge.unpaidPeriods.length - 4} more
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Paid History Preview */}
+                                                {charge.isUpToDate && charge.paidPeriods.length > 0 && (
+                                                    <div className="flex justify-between items-center text-xs text-stone-500">
+                                                        <span className="flex items-center gap-1.5">
+                                                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                                                            Last paid
+                                                        </span>
+                                                        <span className="font-medium text-stone-900">
+                                                            {charge.paidPeriods[charge.paidPeriods.length - 1].label}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {/* Fallback if no specific data */}
+                                                {charge.isUpToDate && charge.paidPeriods.length === 0 && (
+                                                    <p className="text-xs text-stone-400 italic">No payment history yet (initial state)</p>
                                                 )}
                                             </div>
                                         </div>
@@ -477,22 +484,22 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                                     <div className={cn(
                                                         "h-8 w-8 rounded-full flex items-center justify-center",
                                                         payment.status === "success" ? "bg-emerald-100" :
-                                                        payment.status === "pending" ? "bg-amber-100" :
-                                                        "bg-red-100"
+                                                            payment.status === "pending" ? "bg-amber-100" :
+                                                                "bg-red-100"
                                                     )}>
                                                         <CreditCard className={cn(
                                                             "h-4 w-4",
                                                             payment.status === "success" ? "text-emerald-600" :
-                                                            payment.status === "pending" ? "text-amber-600" :
-                                                            "text-red-600"
+                                                                payment.status === "pending" ? "text-amber-600" :
+                                                                    "text-red-600"
                                                         )} />
                                                     </div>
                                                     <div>
                                                         <p className="font-medium text-stone-900">
                                                             {payment.payment_type === 'rent' ? 'Rent Payment' :
-                                                             payment.payment_type === 'charge' ? (payment.charges?.name || 'Charge') :
-                                                             payment.payment_type === 'manual' ? 'Manual Payment' :
-                                                             'Payment'}
+                                                                payment.payment_type === 'charge' ? (payment.charges?.name || 'Charge') :
+                                                                    payment.payment_type === 'manual' ? 'Manual Payment' :
+                                                                        'Payment'}
                                                         </p>
                                                         <p className="text-sm text-stone-500">{formatDate(payment.created_at)}</p>
                                                     </div>
@@ -502,8 +509,8 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                                     <Badge className={cn(
                                                         "text-xs",
                                                         payment.status === "success" ? "bg-emerald-50 text-emerald-600" :
-                                                        payment.status === "pending" ? "bg-amber-50 text-amber-600" :
-                                                        "bg-red-50 text-red-600"
+                                                            payment.status === "pending" ? "bg-amber-50 text-amber-600" :
+                                                                "bg-red-50 text-red-600"
                                                     )}>
                                                         {payment.status}
                                                     </Badge>

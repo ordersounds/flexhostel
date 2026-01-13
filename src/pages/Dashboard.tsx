@@ -179,7 +179,7 @@ const Dashboard = () => {
               .maybeSingle(),
             supabase
               .from("payments")
-              .select("*")
+              .select("*, charges(name)")
               .eq("user_id", user.id)
               .order("created_at", { ascending: false })
           ]);
@@ -548,11 +548,11 @@ const Dashboard = () => {
                                 return (
                                   <div key={charge.id} className="group">
                                     <div className="flex justify-between items-center p-4 bg-white/5 rounded-xl border border-white/10 group-hover:border-primary/20 transition-all">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2 mb-1">
-                                          <p className="font-bold text-white group-hover:text-primary transition-colors">{charge.name}</p>
+                                      <div className="flex-1 min-w-0 mr-3">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                          <p className="font-bold text-white group-hover:text-primary transition-colors truncate">{charge.name}</p>
                                           {isFullyPaid && (
-                                            <Badge className={`text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 ${status?.chosenFrequency === 'yearly'
+                                            <Badge className={`text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 flex-shrink-0 ${status?.chosenFrequency === 'yearly'
                                               ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
                                               : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
                                               }`}>
@@ -560,7 +560,7 @@ const Dashboard = () => {
                                             </Badge>
                                           )}
                                         </div>
-                                        <p className="text-white/60 text-sm mt-0.5">
+                                        <p className="text-white/60 text-sm mt-0.5 truncate">
                                           ₦{charge.amount.toLocaleString()} • {charge.frequency}
                                         </p>
                                         {status && !isFullyPaid && (
@@ -570,8 +570,15 @@ const Dashboard = () => {
                                         )}
                                       </div>
                                       {isFullyPaid ? (
-                                        <Badge className="bg-green-500/20 text-green-300 border border-green-500/30 text-[8px] tracking-widest font-bold uppercase px-3 py-1">
-                                          <CheckCircle className="h-3 w-3 mr-1" /> Paid
+                                        <Badge className="bg-green-500/20 text-green-300 border border-green-500/30 text-[8px] tracking-widest font-bold uppercase px-3 py-1 flex flex-col items-start gap-1 h-auto flex-shrink-0">
+                                          <span className="flex items-center whitespace-nowrap">
+                                            <CheckCircle className="h-3 w-3 mr-1" /> Paid
+                                          </span>
+                                          {status?.isUpToDate && status.paidPeriods.length > 0 && status.chosenFrequency === 'yearly' && (
+                                            <span className="text-[7px] opacity-80 border-t border-green-500/30 pt-1 mt-0.5 w-full whitespace-nowrap">
+                                              {status.paidPeriods[status.paidPeriods.length - 1].label}
+                                            </span>
+                                          )}
                                         </Badge>
                                       ) : (
                                         <Button
@@ -936,15 +943,7 @@ const Dashboard = () => {
                         <h2 className="font-display text-4xl md:text-5xl font-bold text-stone-900 tracking-tighter mb-2">Financial Ledger</h2>
                         <p className="text-stone-500 font-medium">Your complete transaction and billing history.</p>
                       </div>
-                      <div className="flex items-center gap-4">
-                        <div className="bg-green-50 px-4 py-3 rounded-2xl border border-green-100 text-center min-w-[120px]">
-                          <p className="text-[10px] font-bold text-green-700 uppercase tracking-widest mb-1">Status</p>
-                          <p className="text-sm font-bold text-green-800">Account Balanced</p>
-                        </div>
-                        <Button variant="outline" size="sm" className="border-stone-200 text-stone-600 hover:bg-stone-50">
-                          <ArrowUpRight className="h-4 w-4 mr-2" /> Export
-                        </Button>
-                      </div>
+
                     </div>
 
                     {/* Outstanding Charges Section */}
@@ -998,8 +997,15 @@ const Dashboard = () => {
                                       </div>
                                       <div className="flex-shrink-0">
                                         {isFullyPaid ? (
-                                          <Badge className="bg-green-50 text-green-700 border border-green-100 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5">
-                                            <CheckCircle className="h-3.5 w-3.5 mr-1" /> Paid
+                                          <Badge className="bg-green-50 text-green-700 border border-green-100 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5 flex flex-col items-start gap-1 h-auto">
+                                            <span className="flex items-center">
+                                              <CheckCircle className="h-3.5 w-3.5 mr-1" /> Paid
+                                            </span>
+                                            {status?.isUpToDate && status.paidPeriods.length > 0 && status.chosenFrequency === 'yearly' && (
+                                              <span className="text-[7px] opacity-80 border-t border-green-200/50 pt-1 mt-0.5 w-full">
+                                                {status.paidPeriods[status.paidPeriods.length - 1].label}
+                                              </span>
+                                            )}
                                           </Badge>
                                         ) : (
                                           <Button
@@ -1052,7 +1058,13 @@ const Dashboard = () => {
                                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
                                 .map(payment => {
                                   // Determine payment frequency from period data
-                                  const isAnnual = payment.period_month === null;
+                                  // Use the same robust heuristic as charge-status.ts
+                                  const isLegacyAnnual = payment.period_label && (
+                                    payment.period_label.toLowerCase().includes('annual') ||
+                                    payment.period_label.includes(' - ')
+                                  );
+                                  const isAnnual = payment.period_month === null || payment.period_month_end !== null || isLegacyAnnual;
+
                                   const frequencyLabel = isAnnual ? 'Annual' : 'Monthly';
                                   const frequencyColor = isAnnual ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-purple-50 text-purple-700 border-purple-100';
 
@@ -1069,7 +1081,8 @@ const Dashboard = () => {
                                             <div className="flex-1">
                                               <div className="flex items-center gap-2 mb-1">
                                                 <p className="font-bold text-stone-900 capitalize">
-                                                  {payment.payment_type} Payment
+                                                  {/* Show Charge Name if available, otherwise fallback to Type */}
+                                                  {payment.charges?.name || `${payment.payment_type} Payment`}
                                                 </p>
                                                 <Badge className={`${frequencyColor} text-[7px] font-bold uppercase tracking-widest px-2 py-0.5`}>
                                                   {frequencyLabel}
@@ -1078,9 +1091,10 @@ const Dashboard = () => {
                                               <p className="text-stone-500 text-xs">
                                                 {new Date(payment.created_at).toLocaleString()} • {payment.paystack_reference}
                                               </p>
-                                              {isAnnual && (
+                                              {(isAnnual || payment.period_label) && (
                                                 <p className="text-stone-400 text-[10px] font-medium mt-1">
-                                                  Covers until Dec 31, {payment.period_year}
+                                                  {/* Use the explicit label if available, otherwise heuristic */}
+                                                  {payment.period_label || `Covers until Dec 31, ${payment.period_year}`}
                                                 </p>
                                               )}
                                             </div>
@@ -1128,22 +1142,24 @@ const Dashboard = () => {
             )}
           </div>
         </div>
-      </main>
+      </main >
       <Footer />
 
       {/* Charge Payment Dialog */}
-      {selectedCharge && (
-        <ChargePaymentDialog
-          open={isChargeDialogOpen}
-          onOpenChange={handleChargeDialogClose}
-          charge={selectedCharge}
-          userId={user.id}
-          userEmail={user.email}
-          tenancyStartDate={tenancy?.start_date}
-          onPaymentComplete={handlePaymentComplete}
-        />
-      )}
-    </div>
+      {
+        selectedCharge && (
+          <ChargePaymentDialog
+            open={isChargeDialogOpen}
+            onOpenChange={handleChargeDialogClose}
+            charge={selectedCharge}
+            userId={user.id}
+            userEmail={user.email}
+            tenancyStartDate={tenancy?.start_date}
+            onPaymentComplete={handlePaymentComplete}
+          />
+        )
+      }
+    </div >
   );
 };
 

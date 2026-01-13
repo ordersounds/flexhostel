@@ -74,13 +74,21 @@ const isMonthCovered = (
         if (payment.status !== 'success') continue;
         if (payment.period_year === null || payment.period_month === null) continue;
 
-        // Yearly payment covers a range of months (possibly spanning calendar years)
-        if (payment.period_month_end !== null) {
+        // Yearly payment covers a range (or legacy yearly detected by label)
+        const isLegacyYearly = payment.period_label && (
+            payment.period_label.toLowerCase().includes('annual') ||
+            payment.period_label.includes(' - ')
+        );
+
+        if (payment.period_month_end !== null || isLegacyYearly) {
             const startYear = payment.period_year;
-            const startMonth = payment.period_month;
-            const endMonth = payment.period_month_end;
-            // If end month is less than start month, the period spans into next year
-            const endYear = endMonth < startMonth ? startYear + 1 : startYear;
+            const startMonth = payment.period_month || 1; // Fallback to Jan for legacy yearly
+            const endMonth = payment.period_month_end || 12; // Fallback to Dec for legacy yearly (or annual)
+
+            // Handle cross-year logic
+            // If explicit end month is smaller, it wraps.
+            // For legacy "Annual", it's usually Jan-Dec (1-12), so no wrap.
+            const endYear = (endMonth < startMonth) ? startYear + 1 : startYear;
 
             const startVal = startYear * 12 + startMonth;
             const endVal = endYear * 12 + endMonth;
@@ -288,11 +296,16 @@ export const isPeriodPaid = async (
     return data.some((payment: any) => {
         if (payment.period_year === null || payment.period_month === null) return false;
 
-        // Yearly payment covers a range
-        if (payment.period_month_end !== null) {
+        // Yearly payment coverage (with legacy support)
+        const isLegacyYearly = payment.period_label && (
+            payment.period_label.toLowerCase().includes('annual') ||
+            payment.period_label.includes(' - ')
+        );
+
+        if (payment.period_month_end !== null || isLegacyYearly) {
             const startYear = payment.period_year;
             const startMonth = payment.period_month;
-            const endMonth = payment.period_month_end;
+            const endMonth = payment.period_month_end || 12; // Fallback
             const endYear = endMonth < startMonth ? startYear + 1 : startYear;
 
             const startVal = startYear * 12 + startMonth;
