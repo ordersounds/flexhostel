@@ -387,14 +387,16 @@ const ChargePaymentDialog = ({
                 <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest">
                     Select Month to Pay
                 </label>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStep('select_frequency')}
-                    className="text-xs"
-                >
-                    Back
-                </Button>
+                {!chargeStatus?.isLocked && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setStep('select_frequency')}
+                        className="text-xs"
+                    >
+                        Back
+                    </Button>
+                )}
             </div>
 
             <div className="space-y-2 max-h-64 overflow-y-auto">
