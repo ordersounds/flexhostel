@@ -16,6 +16,7 @@ export interface PaidPeriod {
 
 export interface UnpaidPeriod {
     month: number;
+    monthEnd?: number | null;
     year: number;
     label: string;
     amount: number;
@@ -34,6 +35,7 @@ export interface ChargePaymentStatus {
     unpaidPeriods: UnpaidPeriod[];
     nextPaymentDue: UnpaidPeriod | null;
     totalArrears: number;
+    isUpToDate: boolean;
 }
 
 export interface PaymentRecord {
@@ -59,23 +61,36 @@ const getMonthName = (month: number): string => {
 
 /**
  * Check if a specific month/year is covered by existing payments
+ * Senior Engineer Fix: Correctly handles yearly payments spanning calendar years
  */
 const isMonthCovered = (
     month: number,
     year: number,
     payments: PaymentRecord[]
 ): PaymentRecord | null => {
-    for (const payment of payments) {
-        if (payment.status !== 'success' || payment.period_year !== year) continue;
+    const targetVal = year * 12 + month;
 
-        // Yearly payment covers all months
-        if (payment.period_month_end !== null && payment.period_month !== null) {
-            if (month >= payment.period_month && month <= payment.period_month_end) {
+    for (const payment of payments) {
+        if (payment.status !== 'success') continue;
+        if (payment.period_year === null || payment.period_month === null) continue;
+
+        // Yearly payment covers a range of months (possibly spanning calendar years)
+        if (payment.period_month_end !== null) {
+            const startYear = payment.period_year;
+            const startMonth = payment.period_month;
+            const endMonth = payment.period_month_end;
+            // If end month is less than start month, the period spans into next year
+            const endYear = endMonth < startMonth ? startYear + 1 : startYear;
+
+            const startVal = startYear * 12 + startMonth;
+            const endVal = endYear * 12 + endMonth;
+
+            if (targetVal >= startVal && targetVal <= endVal) {
                 return payment;
             }
         }
         // Monthly payment covers single month
-        else if (payment.period_month === month) {
+        else if (payment.period_month === month && payment.period_year === year) {
             return payment;
         }
     }
@@ -84,6 +99,7 @@ const isMonthCovered = (
 
 /**
  * Get comprehensive charge payment status for a tenant
+ * Senior Engineer Note: Always fetches fresh data to prevent stale state issues
  */
 export const getChargePaymentStatus = async (
     userId: string,
@@ -91,7 +107,8 @@ export const getChargePaymentStatus = async (
     chargeName: string,
     chargeAmount: number,
     chargeFrequency: 'monthly' | 'yearly',
-    tenancyStartDate: string
+    tenancyStartDate: string,
+    overrideFrequency?: 'monthly' | 'yearly'
 ): Promise<ChargePaymentStatus> => {
     const now = new Date();
     const currentMonth = now.getMonth() + 1; // 1-12
@@ -108,7 +125,7 @@ export const getChargePaymentStatus = async (
         .eq("charge_id", chargeId)
         .maybeSingle();
 
-    // Fetch all successful payments for this charge
+    // Always fetch fresh payment data to prevent stale state issues
     const { data: payments } = await supabase
         .from("payments")
         .select("*")
@@ -125,39 +142,57 @@ export const getChargePaymentStatus = async (
     const paidPeriods: PaidPeriod[] = [];
     const unpaidPeriods: UnpaidPeriod[] = [];
 
-    // Determine effective frequency (chosen or default to charge frequency)
-    const effectiveFrequency = chosenFrequency || chargeFrequency;
+    // Determine effective frequency (override > chosen > default)
+    const effectiveFrequency = overrideFrequency || chosenFrequency || chargeFrequency;
 
     if (effectiveFrequency === 'yearly') {
-        // For yearly frequency, check each year from tenancy start to current
-        for (let year = startYear; year <= currentYear; year++) {
-            const yearPayment = paymentRecords.find(p => 
-                p.period_year === year && 
-                (p.period_month_end !== null || p.period_month === null || p.period_month === 1)
+        // For yearly frequency, calculate 12-month blocks starting from tenancy start
+        let checkDate = new Date(tenancyStart);
+
+        // We check from start date up to "now" (plus one cycle if we are in it)
+        while (checkDate <= now) {
+            const cycleStartMonth = checkDate.getMonth() + 1;
+            const cycleStartYear = checkDate.getFullYear();
+
+            // End month is 1 month before the next year start
+            const nextCycleStart = new Date(checkDate);
+            nextCycleStart.setFullYear(nextCycleStart.getFullYear() + 1);
+
+            const tempEnd = new Date(nextCycleStart);
+            tempEnd.setMonth(tempEnd.getMonth() - 1);
+            const cycleEndMonth = tempEnd.getMonth() + 1;
+            const cycleEndYear = tempEnd.getFullYear();
+
+            const yearPayment = paymentRecords.find(p =>
+                p.period_year === cycleStartYear &&
+                p.period_month === cycleStartMonth &&
+                p.period_month_end === cycleEndMonth
             );
+
+            const label = `${getMonthName(cycleStartMonth)} ${cycleStartYear} - ${getMonthName(cycleEndMonth)} ${cycleEndYear}`;
 
             if (yearPayment) {
                 paidPeriods.push({
-                    month: yearPayment.period_month || 1,
-                    monthEnd: yearPayment.period_month_end || 12,
-                    year: year,
-                    label: `${year} Annual (Jan-Dec)`,
+                    month: cycleStartMonth,
+                    monthEnd: cycleEndMonth,
+                    year: cycleStartYear,
+                    label: label,
                     paymentId: yearPayment.id,
                     paidAt: yearPayment.paid_at || ''
                 });
             } else {
-                // Calculate yearly amount based on charge frequency
-                const yearlyAmount = chargeFrequency === 'monthly' 
-                    ? chargeAmount * 12 
-                    : chargeAmount;
-                
+                const yearlyAmount = chargeFrequency === 'monthly' ? chargeAmount * 12 : chargeAmount;
                 unpaidPeriods.push({
-                    month: 1,
-                    year: year,
-                    label: `${year} Annual`,
+                    month: cycleStartMonth,
+                    monthEnd: cycleEndMonth,
+                    year: cycleStartYear,
+                    label: label,
                     amount: yearlyAmount
                 });
             }
+
+            // Move to next 12-month cycle
+            checkDate = nextCycleStart;
         }
     } else {
         // For monthly frequency, check each month from tenancy start to current
@@ -178,8 +213,8 @@ export const getChargePaymentStatus = async (
                 });
             } else {
                 // Calculate monthly amount based on charge frequency
-                const monthlyAmount = chargeFrequency === 'yearly' 
-                    ? Math.round(chargeAmount / 12) 
+                const monthlyAmount = chargeFrequency === 'yearly'
+                    ? Math.round(chargeAmount / 12)
                     : chargeAmount;
 
                 unpaidPeriods.push({
@@ -222,12 +257,14 @@ export const getChargePaymentStatus = async (
         paidPeriods,
         unpaidPeriods,
         nextPaymentDue,
-        totalArrears
+        totalArrears,
+        isUpToDate: unpaidPeriods.length === 0
     };
 };
 
 /**
  * Check if a specific period is already paid
+ * Senior Engineer Fix: Handles cross-year yearly payments correctly
  */
 export const isPeriodPaid = async (
     userId: string,
@@ -235,23 +272,36 @@ export const isPeriodPaid = async (
     periodMonth: number,
     periodYear: number
 ): Promise<boolean> => {
+    // Fetch all successful payments for this charge (not just the specific year)
+    // because yearly payments can span across calendar years
     const { data } = await supabase
         .from("payments")
         .select("*")
         .eq("user_id", userId)
         .eq("charge_id", chargeId)
-        .eq("status", "success")
-        .eq("period_year", periodYear);
+        .eq("status", "success");
 
     if (!data || data.length === 0) return false;
 
+    const targetVal = periodYear * 12 + periodMonth;
+
     return data.some((payment: any) => {
-        // Yearly payment covers all months
-        if (payment.period_month_end !== null && payment.period_month !== null) {
-            return periodMonth >= payment.period_month && periodMonth <= payment.period_month_end;
+        if (payment.period_year === null || payment.period_month === null) return false;
+
+        // Yearly payment covers a range
+        if (payment.period_month_end !== null) {
+            const startYear = payment.period_year;
+            const startMonth = payment.period_month;
+            const endMonth = payment.period_month_end;
+            const endYear = endMonth < startMonth ? startYear + 1 : startYear;
+
+            const startVal = startYear * 12 + startMonth;
+            const endVal = endYear * 12 + endMonth;
+
+            return targetVal >= startVal && targetVal <= endVal;
         }
         // Monthly payment covers single month
-        return payment.period_month === periodMonth;
+        return payment.period_month === periodMonth && payment.period_year === periodYear;
     });
 };
 

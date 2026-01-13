@@ -51,11 +51,11 @@ const ChargePaymentDialog = ({
     // Core state
     const [step, setStep] = useState<PaymentStep>('loading');
     const [chargeStatus, setChargeStatus] = useState<ChargePaymentStatus | null>(null);
-    
+
     // Selection state
     const [selectedFrequency, setSelectedFrequency] = useState<"monthly" | "yearly" | null>(null);
     const [selectedPeriod, setSelectedPeriod] = useState<UnpaidPeriod | null>(null);
-    
+
     // UI state
     const [isProcessing, setIsProcessing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -86,40 +86,48 @@ const ChargePaymentDialog = ({
         }
     }, [open, charge?.id, userId]);
 
-    const fetchChargeStatus = async () => {
+    const fetchChargeStatus = async (overrideFreq?: 'monthly' | 'yearly') => {
         setStep('loading');
         setError(null);
 
         try {
             const effectiveTenancyStart = tenancyStartDate || new Date().toISOString().split('T')[0];
-            
+
             const status = await getChargePaymentStatus(
                 userId,
                 charge.id,
                 charge.name,
                 charge.amount,
                 charge.frequency,
-                effectiveTenancyStart
+                effectiveTenancyStart,
+                overrideFreq
             );
 
             setChargeStatus(status);
 
-            // Determine next step based on status
+            // Determine if we should auto-advance to confirm
+            const currentFreq = overrideFreq || status.chosenFrequency || status.chargeFrequency;
+            setSelectedFrequency(currentFreq);
+
             if (status.isLocked && status.chosenFrequency) {
-                // Frequency is locked, use it and go to period selection or confirm
-                setSelectedFrequency(status.chosenFrequency);
-                
                 if (status.chosenFrequency === 'monthly' && status.unpaidPeriods.length > 1) {
                     setStep('select_period');
                 } else if (status.nextPaymentDue) {
                     setSelectedPeriod(status.nextPaymentDue);
                     setStep('confirm');
                 } else {
-                    // All periods paid
+                    setStep('confirm');
+                }
+            } else if (overrideFreq) {
+                if (overrideFreq === 'monthly' && status.unpaidPeriods.length > 1) {
+                    setStep('select_period');
+                } else if (status.nextPaymentDue) {
+                    setSelectedPeriod(status.nextPaymentDue);
+                    setStep('confirm');
+                } else {
                     setStep('confirm');
                 }
             } else {
-                // User needs to select frequency
                 setStep('select_frequency');
             }
         } catch (err) {
@@ -131,45 +139,7 @@ const ChargePaymentDialog = ({
 
     const handleSelectFrequency = (freq: "monthly" | "yearly") => {
         if (chargeStatus?.isLocked) return;
-        
-        setSelectedFrequency(freq);
-        
-        // For yearly, auto-select the current year as the period
-        if (freq === 'yearly') {
-            const yearlyPeriod = chargeStatus?.unpaidPeriods.find(p => p.month === 1);
-            if (yearlyPeriod) {
-                setSelectedPeriod(yearlyPeriod);
-            } else {
-                // Create a new yearly period for current year
-                const now = new Date();
-                setSelectedPeriod({
-                    month: 1,
-                    year: now.getFullYear(),
-                    label: `${now.getFullYear()} Annual`,
-                    amount: calculatePaymentAmount(charge, 'yearly')
-                });
-            }
-            setStep('confirm');
-        } else {
-            // For monthly, check if there are multiple unpaid periods
-            if (chargeStatus && chargeStatus.unpaidPeriods.length > 1) {
-                setStep('select_period');
-            } else if (chargeStatus?.nextPaymentDue) {
-                setSelectedPeriod(chargeStatus.nextPaymentDue);
-                setStep('confirm');
-            } else {
-                // No unpaid periods, create current month
-                const now = new Date();
-                const monthName = new Intl.DateTimeFormat('en-US', { month: 'long' }).format(now);
-                setSelectedPeriod({
-                    month: now.getMonth() + 1,
-                    year: now.getFullYear(),
-                    label: `${monthName} ${now.getFullYear()}`,
-                    amount: calculatePaymentAmount(charge, 'monthly')
-                });
-                setStep('confirm');
-            }
-        }
+        fetchChargeStatus(freq);
     };
 
     const handleSelectPeriod = (period: UnpaidPeriod) => {
@@ -192,8 +162,8 @@ const ChargePaymentDialog = ({
         try {
             // Convert selected period to PaymentPeriod format
             const paymentPeriod: PaymentPeriod = {
-                month: selectedFrequency === 'yearly' ? 1 : selectedPeriod.month,
-                monthEnd: selectedFrequency === 'yearly' ? 12 : null,
+                month: selectedPeriod.month,
+                monthEnd: selectedPeriod.monthEnd || null,
                 year: selectedPeriod.year,
                 label: selectedPeriod.label
             };
@@ -475,8 +445,8 @@ const ChargePaymentDialog = ({
                     </span>
                     <Badge className={cn(
                         "text-[8px] tracking-widest font-bold uppercase",
-                        selectedFrequency === 'yearly' 
-                            ? "bg-blue-50 text-blue-600" 
+                        selectedFrequency === 'yearly'
+                            ? "bg-blue-50 text-blue-600"
                             : "bg-purple-50 text-purple-600"
                     )}>
                         {selectedFrequency}
@@ -564,7 +534,7 @@ const ChargePaymentDialog = ({
                         Pay {charge.name}
                     </DialogTitle>
                     <DialogDescription className="text-stone-500 text-sm">
-                        {chargeStatus?.isLocked 
+                        {chargeStatus?.isLocked
                             ? `Your payment plan is locked to ${chargeStatus.chosenFrequency}.`
                             : "Choose your preferred payment frequency. This choice will be locked for future payments."
                         }
@@ -579,7 +549,7 @@ const ChargePaymentDialog = ({
                     )}
 
                     {step === 'select_frequency' && (
-                        chargeStatus && chargeStatus.unpaidPeriods.length === 0
+                        chargeStatus?.isUpToDate
                             ? renderAllPaidView()
                             : renderFrequencySelection()
                     )}

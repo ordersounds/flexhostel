@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
+import { cn } from "@/lib/utils";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
@@ -197,7 +198,7 @@ const Dashboard = () => {
             .eq("role", "landlord")
             .limit(1)
             .maybeSingle();
-          
+
           if (isMounted) {
             setLandlordId(landlordData?.id || null);
           }
@@ -215,6 +216,35 @@ const Dashboard = () => {
       isMounted = false;
     };
   }, [user, authLoading, profile, navigate]);
+
+  // Fetch comprehensive charge statuses whenever charges or payments update
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      if (!user?.id || !charges.length || !tenancy?.start_date) return;
+
+      const newStatuses = new Map<string, ChargePaymentStatus>();
+
+      for (const charge of charges) {
+        try {
+          const status = await getChargePaymentStatus(
+            user.id,
+            charge.id,
+            charge.name,
+            charge.amount,
+            charge.frequency,
+            tenancy.start_date
+          );
+          newStatuses.set(charge.id, status);
+        } catch (err) {
+          console.error(`Error fetching status for charge ${charge.id}:`, err);
+        }
+      }
+
+      setChargeStatuses(newStatuses);
+    };
+
+    fetchStatuses();
+  }, [user?.id, charges, tenancy?.start_date, payments]);
 
   const { signOut: authSignOut } = useAuth();
 
@@ -283,17 +313,21 @@ const Dashboard = () => {
     }
   };
 
-  const handlePaymentComplete = () => {
-    // Refresh payments data after successful payment
-    supabase
+  const handlePaymentComplete = async () => {
+    if (!user?.id) return;
+
+    // Refresh payments data after successful payment to trigger status updates
+    const { data } = await supabase
       .from("payments")
       .select("*")
       .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
-      .then(({ data }) => {
-        setPayments(data || []);
-        toast.success("Payment completed successfully!");
-      });
+      .order("created_at", { ascending: false });
+
+    if (data) {
+      setPayments(data);
+      // The useEffect for chargeStatuses will trigger automatically because payments changed
+      toast.success("Payments updated successfully!");
+    }
   };
 
   const initiatePaystack = (amount: number, reference: string, key: string, paymentType: string) => {
@@ -315,9 +349,10 @@ const Dashboard = () => {
     handler.openIframe();
   };
 
-  // Check if a specific charge has been paid
-  const isChargePaid = (chargeId: string) => {
-    return payments.some(p => p.charge_id === chargeId && p.status === 'success');
+  // Check if a specific charge is fully up to date (no arrears)
+  const isChargeFullyPaid = (chargeId: string) => {
+    const status = chargeStatuses.get(chargeId);
+    return status?.isUpToDate ?? false;
   };
 
   // Check if rent has been paid for the approved application
@@ -506,9 +541,9 @@ const Dashboard = () => {
                             </div>
                             <div className="space-y-3">
                               {charges.map(charge => {
-                                const chargePayment = payments.find(p => p.charge_id === charge.id && p.status === 'success');
-                                const isPaid = !!chargePayment;
-                                const isAnnual = chargePayment && chargePayment.period_month === null;
+                                const status = chargeStatuses.get(charge.id);
+                                const isFullyPaid = status?.isUpToDate ?? false;
+                                const hasArrears = (status?.unpaidPeriods.length ?? 0) > 1;
 
                                 return (
                                   <div key={charge.id} className="group">
@@ -516,24 +551,25 @@ const Dashboard = () => {
                                       <div className="flex-1">
                                         <div className="flex items-center gap-2 mb-1">
                                           <p className="font-bold text-white group-hover:text-primary transition-colors">{charge.name}</p>
-                                          {isPaid && (
-                                            <Badge className={`text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 ${
-                                              isAnnual
-                                                ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                                                : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                                            }`}>
-                                              {isAnnual ? 'Annual' : 'Monthly'}
+                                          {isFullyPaid && (
+                                            <Badge className={`text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 ${status?.chosenFrequency === 'yearly'
+                                              ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                              : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                              }`}>
+                                              {status?.chosenFrequency === 'yearly' ? 'Annual' : 'Monthly'}
                                             </Badge>
                                           )}
                                         </div>
-                                        <p className="text-white/60 text-sm mt-0.5">₦{charge.amount.toLocaleString()} • {charge.frequency}</p>
-                                        {isPaid && isAnnual && (
-                                          <p className="text-white/40 text-[10px] mt-1">
-                                            Covered until Dec 31, {chargePayment.period_year}
+                                        <p className="text-white/60 text-sm mt-0.5">
+                                          ₦{charge.amount.toLocaleString()} • {charge.frequency}
+                                        </p>
+                                        {status && !isFullyPaid && (
+                                          <p className="text-amber-400 text-[10px] mt-1 font-bold uppercase tracking-wider">
+                                            {hasArrears ? `${status.unpaidPeriods.length} Periods Due` : 'Pending Current'}
                                           </p>
                                         )}
                                       </div>
-                                      {isPaid ? (
+                                      {isFullyPaid ? (
                                         <Badge className="bg-green-500/20 text-green-300 border border-green-500/30 text-[8px] tracking-widest font-bold uppercase px-3 py-1">
                                           <CheckCircle className="h-3 w-3 mr-1" /> Paid
                                         </Badge>
@@ -542,7 +578,10 @@ const Dashboard = () => {
                                           onClick={() => handleChargePayment(charge)}
                                           disabled={payingItem === charge.id}
                                           size="sm"
-                                          className="bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest px-4 py-2 transition-all"
+                                          className={cn(
+                                            "font-bold text-xs uppercase tracking-widest px-4 py-2 transition-all",
+                                            hasArrears ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-primary hover:bg-primary/90 text-white"
+                                          )}
                                         >
                                           {payingItem === charge.id ? (
                                             <>
@@ -552,7 +591,7 @@ const Dashboard = () => {
                                           ) : (
                                             <>
                                               <ArrowUpRight className="h-3 w-3 mr-1" />
-                                              Pay Now
+                                              {hasArrears ? "Pay Arrears" : "Pay Now"}
                                             </>
                                           )}
                                         </Button>
@@ -707,7 +746,7 @@ const Dashboard = () => {
                                       <span className="text-stone-500 font-medium">{charge.name}</span>
                                       <span className="text-stone-900 font-bold">₦{charge.amount.toLocaleString()}</span>
                                     </div>
-                                    {isChargePaid(charge.id) ? (
+                                    {isChargeFullyPaid(charge.id) ? (
                                       <Badge className="bg-green-50 text-green-700 border-none text-[8px] tracking-widest font-bold uppercase">Paid</Badge>
                                     ) : (
                                       <Button
@@ -721,7 +760,7 @@ const Dashboard = () => {
                                     )}
                                   </div>
                                 ))}
-                                
+
                                 <div className="pt-3 mt-3 border-t border-stone-200/50 flex justify-between items-center">
                                   <span className="text-[10px] font-bold text-stone-900 uppercase">Total Initial Payment</span>
                                   <span className="text-lg font-bold text-primary">
@@ -918,7 +957,7 @@ const Dashboard = () => {
                             <h3 className="font-display text-2xl font-bold text-stone-900">Outstanding Charges</h3>
                             {charges.length > 0 && (
                               <Badge className="bg-amber-50 text-amber-700 border border-amber-100 text-[9px] font-bold uppercase tracking-widest px-2 py-1">
-                                {charges.filter(c => !isChargePaid(c.id)).length} Pending
+                                {charges.filter(c => !isChargeFullyPaid(c.id)).length} Pending
                               </Badge>
                             )}
                           </div>
@@ -926,9 +965,9 @@ const Dashboard = () => {
                           {charges.length > 0 ? (
                             <div className="space-y-4">
                               {charges.map(charge => {
-                                const chargePayment = payments.find(p => p.charge_id === charge.id && p.status === 'success');
-                                const isPaid = !!chargePayment;
-                                const isAnnual = chargePayment && chargePayment.period_month === null;
+                                const status = chargeStatuses.get(charge.id);
+                                const isFullyPaid = status?.isUpToDate ?? false;
+                                const hasArrears = (status?.unpaidPeriods.length ?? 0) > 1;
 
                                 return (
                                   <div key={charge.id} className="group">
@@ -939,27 +978,26 @@ const Dashboard = () => {
                                           <div className="min-w-0 flex-1">
                                             <div className="flex items-center gap-2 mb-1">
                                               <p className="font-bold text-stone-900 truncate group-hover:text-primary transition-colors">{charge.name}</p>
-                                              {isPaid && (
-                                                <Badge className={`text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 ${
-                                                  isAnnual
-                                                    ? 'bg-blue-500/20 text-blue-700 border border-blue-500/30'
-                                                    : 'bg-purple-500/20 text-purple-700 border border-purple-500/30'
-                                                }`}>
-                                                  {isAnnual ? 'Annual' : 'Monthly'}
+                                              {isFullyPaid && (
+                                                <Badge className={`text-[6px] font-bold uppercase tracking-widest px-1.5 py-0.5 ${status?.chosenFrequency === 'yearly'
+                                                  ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                                                  : 'bg-purple-50 text-purple-700 border border-purple-100'
+                                                  }`}>
+                                                  {status?.chosenFrequency === 'yearly' ? 'Annual' : 'Monthly'}
                                                 </Badge>
                                               )}
                                             </div>
                                             <p className="text-stone-500 text-sm truncate">₦{charge.amount.toLocaleString()} • {charge.frequency}</p>
-                                            {isPaid && isAnnual && (
-                                              <p className="text-stone-400 text-[10px] mt-1">
-                                                Covered until Dec 31, {chargePayment.period_year}
+                                            {status && !isFullyPaid && (
+                                              <p className="text-amber-600 text-[10px] mt-1 font-bold uppercase tracking-wider">
+                                                {hasArrears ? `${status.unpaidPeriods.length} Periods Due` : 'Pending Current'}
                                               </p>
                                             )}
                                           </div>
                                         </div>
                                       </div>
                                       <div className="flex-shrink-0">
-                                        {isPaid ? (
+                                        {isFullyPaid ? (
                                           <Badge className="bg-green-50 text-green-700 border border-green-100 text-[9px] font-bold uppercase tracking-widest px-3 py-1.5">
                                             <CheckCircle className="h-3.5 w-3.5 mr-1" /> Paid
                                           </Badge>
@@ -967,7 +1005,10 @@ const Dashboard = () => {
                                           <Button
                                             onClick={() => handleChargePayment(charge)}
                                             disabled={payingItem === charge.id}
-                                            className="h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest px-4 transition-all"
+                                            className={cn(
+                                              "h-10 rounded-xl font-bold text-xs uppercase tracking-widest px-4 transition-all",
+                                              hasArrears ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-primary hover:bg-primary/90 text-white"
+                                            )}
                                           >
                                             {payingItem === charge.id ? (
                                               <>
@@ -977,7 +1018,7 @@ const Dashboard = () => {
                                             ) : (
                                               <>
                                                 <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
-                                                Pay Now
+                                                {hasArrears ? "Pay Arrears" : "Pay Now"}
                                               </>
                                             )}
                                           </Button>

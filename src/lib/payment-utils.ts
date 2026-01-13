@@ -55,7 +55,8 @@ export const calculatePaymentAmount = (
  */
 export const calculatePaymentPeriod = (
     userPreference: 'monthly' | 'yearly',
-    specificPeriod?: PaymentPeriod
+    specificPeriod?: PaymentPeriod,
+    tenancyStartDate?: string
 ): PaymentCalculation => {
     const now = new Date();
 
@@ -72,6 +73,30 @@ export const calculatePaymentPeriod = (
     }
 
     if (userPreference === 'yearly') {
+        // Use anniversary-based yearly cycle if tenancyStartDate is available
+        if (tenancyStartDate) {
+            const start = new Date(tenancyStartDate);
+            const startMonth = start.getMonth() + 1;
+            const startYear = now.getFullYear(); // Current calendar year for start
+
+            const nextYear = new Date(start);
+            nextYear.setFullYear(start.getFullYear() + 1);
+            const end = new Date(nextYear);
+            end.setMonth(nextYear.getMonth() - 1);
+            const endMonth = end.getMonth() + 1;
+            const endYear = startYear + (endMonth < startMonth ? 1 : 0);
+
+            const getMonthName = (m: number) => new Date(2000, m - 1, 1).toLocaleDateString('en-US', { month: 'long' });
+
+            return {
+                amount: 0,
+                periodMonth: startMonth,
+                periodMonthEnd: endMonth,
+                periodYear: startYear,
+                periodLabel: `${getMonthName(startMonth)} ${startYear} - ${getMonthName(endMonth)} ${endYear}`
+            };
+        }
+
         return {
             amount: 0,
             periodMonth: 1, // January
