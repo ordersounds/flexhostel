@@ -126,7 +126,7 @@ const ResidentsManagement = () => {
                     </Button>
                 </div>
 
-                <div className={cn("grid md:grid-cols-2 lg:grid-cols-3", isMobile ? "gap-4" : "gap-6")}>
+                <div className={cn("grid", isMobile ? "grid-cols-1 gap-4" : "md:grid-cols-2 lg:grid-cols-3 gap-6")}>
                     {tenants.map((tenant) => {
                         const tenancy = tenant.tenancies?.[0]; // Get the first active tenancy
                         const room = tenancy?.rooms;
@@ -148,12 +148,12 @@ const ResidentsManagement = () => {
                                 key={tenant.id}
                                 tenant={tenant}
                                 trigger={
-                                    <div className={cn("bg-white rounded-[2.5rem] border border-stone-100 shadow-sm hover:shadow-xl hover:shadow-stone-200/40 transition-all duration-500 group cursor-pointer", isMobile ? "p-5" : "p-6")}>
+                                    <div className={cn("bg-white rounded-[2rem] border border-stone-100 shadow-sm hover:shadow-xl hover:shadow-stone-200/40 transition-all duration-500 group cursor-pointer overflow-hidden", isMobile ? "p-4" : "p-6")}>
                                         {/* Header with avatar and actions */}
-                                        <div className="flex justify-between items-start mb-4">
-                                            <div className={cn("rounded-[1.5rem] bg-stone-100 overflow-hidden shadow-inner p-1 flex-shrink-0", isMobile ? "h-10 w-10" : "h-12 w-12")}>
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div className={cn("rounded-[1.2rem] bg-stone-100 overflow-hidden shadow-inner flex-shrink-0", isMobile ? "h-12 w-12" : "h-12 w-12")}>
                                                 {tenant.photo_url ? (
-                                                    <img src={tenant.photo_url} className="w-full h-full object-cover rounded-[1.2rem]" />
+                                                    <img src={tenant.photo_url} className="w-full h-full object-cover" />
                                                 ) : (
                                                     <div className="w-full h-full flex items-center justify-center font-bold text-stone-400 uppercase text-sm">
                                                         {tenant.name.charAt(0)}
@@ -167,8 +167,8 @@ const ResidentsManagement = () => {
 
                                         {/* Name and Status */}
                                         <div className="mb-3">
-                                            <h4 className={cn("font-display font-bold text-stone-900 tracking-tight truncate", isMobile ? "text-base" : "text-lg")}>{tenant.name}</h4>
-                                            <div className="flex items-center gap-2 mt-1">
+                                            <h4 className={cn("font-display font-bold text-stone-900 tracking-tight", isMobile ? "text-base" : "text-lg")}>{tenant.name}</h4>
+                                            <div className="flex items-center gap-2 mt-1 flex-wrap">
                                                 <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-[7px] uppercase tracking-widest px-1.5 py-0.5 group-hover:bg-emerald-500 group-hover:text-white transition-colors">
                                                     Active
                                                 </Badge>
@@ -185,27 +185,27 @@ const ResidentsManagement = () => {
                                             <div className="flex items-center gap-2 text-stone-600 mb-3">
                                                 <Building className="h-3.5 w-3.5 text-stone-400 flex-shrink-0" />
                                                 <div className="min-w-0 flex-1">
-                                                    <span className="text-xs font-semibold truncate block">{room.room_name}</span>
+                                                    <span className="text-xs font-semibold block truncate">{room.room_name}</span>
                                                     {building && (
-                                                        <span className="text-[9px] text-stone-500 uppercase tracking-widest block">{building.name}</span>
+                                                        <span className="text-[9px] text-stone-500 uppercase tracking-widest block truncate">{building.name}</span>
                                                     )}
                                                 </div>
                                             </div>
                                         )}
 
-                                        {/* Contact Info - Compact */}
-                                        <div className="flex items-center gap-3 text-stone-500 mb-3">
-                                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                        {/* Contact Info - Stack on mobile */}
+                                        <div className={cn("text-stone-500 mb-3", isMobile ? "space-y-2" : "flex items-center gap-3")}>
+                                            <div className="flex items-center gap-1.5 min-w-0">
                                                 <Phone className="h-3 w-3 flex-shrink-0" />
                                                 <span className="text-xs truncate">{tenant.phone_number || "No contact"}</span>
                                             </div>
-                                            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                                            <div className="flex items-center gap-1.5 min-w-0">
                                                 <Mail className="h-3 w-3 flex-shrink-0" />
                                                 <span className="text-xs truncate">{tenant.email}</span>
                                             </div>
                                         </div>
 
-                                        {/* Payment Status - Compact */}
+                                        {/* Payment Status */}
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className={cn(
@@ -233,7 +233,7 @@ const ResidentsManagement = () => {
                                             </Button>
                                         </div>
 
-                                        {/* Tenancy Dates - Compact */}
+                                        {/* Tenancy Dates */}
                                         {tenancy && (
                                             <div className="mt-3 pt-3 border-t border-stone-50">
                                                 <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest text-center">
