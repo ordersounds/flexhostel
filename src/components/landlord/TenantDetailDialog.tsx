@@ -97,7 +97,6 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                 .eq("building_id", tenancyData?.rooms?.buildings?.id);
 
             // Check payment status and calculate arrears for each charge
-            // Check payment status and calculate arrears for each charge
             const chargesWithStatus = await Promise.all(
                 (chargeData || []).map(async (charge) => {
                     // Use the unified status calculation
@@ -136,13 +135,18 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                 })
             );
 
+            // Senior Engineer Note: Safety deduplication just in case double-entry occurs in future relationships
+            const uniquePaymentsMap = new Map();
+            (paymentData || []).forEach(p => uniquePaymentsMap.set(p.id, p));
+            const deduplicatedPayments = Array.from(uniquePaymentsMap.values());
+
             setTenantData({
                 ...tenant,
                 tenancy: tenancyData,
-                recentPayments: paymentData || [],
+                recentPayments: deduplicatedPayments,
                 buildingCharges: chargesWithStatus
             });
-            setPayments(paymentData || []);
+            setPayments(deduplicatedPayments);
 
         } catch (error) {
             console.error("Error fetching tenant details:", error);
@@ -434,11 +438,6 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                                                     {period.label}
                                                                 </Badge>
                                                             ))}
-                                                            {charge.unpaidPeriods.length > 4 && (
-                                                                <Badge variant="outline" className="text-stone-400 text-[10px] border-dashed border-stone-300">
-                                                                    +{charge.unpaidPeriods.length - 4} more
-                                                                </Badge>
-                                                            )}
                                                         </div>
                                                     </div>
                                                 )}
@@ -478,45 +477,57 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                 <div className="space-y-4">
                                     <h3 className="font-bold text-stone-900 text-lg">Recent Payments</h3>
                                     <div className="space-y-3">
-                                        {payments.slice(0, 3).map((payment: any) => (
-                                            <div key={payment.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
-                                                <div className="flex items-center gap-3">
-                                                    <div className={cn(
-                                                        "h-8 w-8 rounded-full flex items-center justify-center",
-                                                        payment.status === "success" ? "bg-emerald-100" :
-                                                            payment.status === "pending" ? "bg-amber-100" :
-                                                                "bg-red-100"
-                                                    )}>
-                                                        <CreditCard className={cn(
-                                                            "h-4 w-4",
-                                                            payment.status === "success" ? "text-emerald-600" :
-                                                                payment.status === "pending" ? "text-amber-600" :
-                                                                    "text-red-600"
-                                                        )} />
+                                        {payments.slice(0, 5).map((payment: any) => {
+                                            const getPaymentMethodLabel = (p: any) => {
+                                                if (p.manual_confirmation_by) return 'Manual';
+                                                if (p.payment_method === 'card') return 'Card';
+                                                if (p.payment_method === 'bank') return 'Bank';
+                                                if (p.payment_method === 'ussd') return 'USSD';
+                                                return p.payment_method || 'Paystack';
+                                            };
+
+                                            return (
+                                                <div key={payment.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className={cn(
+                                                            "h-8 w-8 rounded-full flex items-center justify-center",
+                                                            payment.status === "success" ? "bg-emerald-100" :
+                                                                payment.status === "pending" ? "bg-amber-100" :
+                                                                    "bg-red-100"
+                                                        )}>
+                                                            <CreditCard className={cn(
+                                                                "h-4 w-4",
+                                                                payment.status === "success" ? "text-emerald-600" :
+                                                                    payment.status === "pending" ? "text-amber-600" :
+                                                                        "text-red-600"
+                                                            )} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-stone-900">
+                                                                {payment.payment_type === 'rent' ? 'Rent Payment' :
+                                                                    payment.payment_type === 'charge' ? (payment.charges?.name || 'Charge') :
+                                                                        payment.payment_type === 'manual' ? 'Manual Payment' :
+                                                                            'Payment'}
+                                                            </p>
+                                                            <p className="text-sm text-stone-500">
+                                                                {formatDate(payment.created_at)} • {getPaymentMethodLabel(payment)}
+                                                            </p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-medium text-stone-900">
-                                                            {payment.payment_type === 'rent' ? 'Rent Payment' :
-                                                                payment.payment_type === 'charge' ? (payment.charges?.name || 'Charge') :
-                                                                    payment.payment_type === 'manual' ? 'Manual Payment' :
-                                                                        'Payment'}
-                                                        </p>
-                                                        <p className="text-sm text-stone-500">{formatDate(payment.created_at)}</p>
+                                                    <div className="text-right">
+                                                        <p className="font-semibold text-stone-900">{formatCurrency(payment.amount)}</p>
+                                                        <Badge className={cn(
+                                                            "text-xs",
+                                                            payment.status === "success" ? "bg-emerald-50 text-emerald-600" :
+                                                                payment.status === "pending" ? "bg-amber-50 text-amber-600" :
+                                                                    "bg-red-50 text-red-600"
+                                                        )}>
+                                                            {payment.status}
+                                                        </Badge>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="font-semibold text-stone-900">{formatCurrency(payment.amount)}</p>
-                                                    <Badge className={cn(
-                                                        "text-xs",
-                                                        payment.status === "success" ? "bg-emerald-50 text-emerald-600" :
-                                                            payment.status === "pending" ? "bg-amber-50 text-amber-600" :
-                                                                "bg-red-50 text-red-600"
-                                                    )}>
-                                                        {payment.status}
-                                                    </Badge>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </>

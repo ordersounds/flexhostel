@@ -152,10 +152,16 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
     const activeTenancy = data?.tenancies?.find((t: any) => t.status === "active");
     const tenant = activeTenancy?.profiles;
 
-    // Flatten all payments across all tenancies and applications for this room
+    // Flatten and deduplicate all payments across all tenancies and applications for this room
     const tenancyPayments = data?.tenancies?.flatMap((t: any) => t.payments || []) || [];
     const applicationPayments = data?.applications?.flatMap((a: any) => a.payments || []) || [];
-    const allPayments = [...tenancyPayments, ...applicationPayments];
+
+    // Senior Engineer Note: Unique payments map to prevent duplicates between tenancies/applications
+    const uniquePaymentsMap = new Map();
+    [...tenancyPayments, ...applicationPayments].forEach(p => {
+        if (p && p.id) uniquePaymentsMap.set(p.id, p);
+    });
+    const allPayments = Array.from(uniquePaymentsMap.values());
 
     // Calculate total revenue from successful payments
     const totalRevenue = allPayments
@@ -166,6 +172,14 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
     const sortedPayments = [...allPayments].sort((a, b) =>
         new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
+
+    const getPaymentMethodLabel = (payment: any) => {
+        if (payment.manual_confirmation_by) return 'Manual';
+        if (payment.payment_method === 'card') return 'Card';
+        if (payment.payment_method === 'bank') return 'Bank';
+        if (payment.payment_method === 'ussd') return 'USSD';
+        return payment.payment_method || 'Paystack';
+    };
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -276,15 +290,15 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                                             <p className="text-sm font-bold text-stone-900">₦{p.amount.toLocaleString()}</p>
                                                             <p className="text-[10px] font-medium text-stone-400">{new Date(p.created_at).toLocaleDateString()}</p>
                                                             <p className="text-[9px] font-medium text-stone-300 uppercase tracking-wider mt-0.5">
-                                                                {p.payment_type || 'Payment'} • {p.payment_method || 'N/A'}
+                                                                {p.payment_type || 'Payment'} • {getPaymentMethodLabel(p)}
                                                             </p>
                                                         </div>
                                                     </div>
                                                     <Badge className={cn(
                                                         "rounded-full px-2 py-0.5 text-[8px] font-bold uppercase tracking-widest border-none",
                                                         p.status === "success" ? "bg-emerald-50 text-emerald-600" :
-                                                        p.status === "pending" ? "bg-amber-50 text-amber-600" :
-                                                        p.status === "failed" ? "bg-red-50 text-red-600" : "bg-stone-50 text-stone-600"
+                                                            p.status === "pending" ? "bg-amber-50 text-amber-600" :
+                                                                p.status === "failed" ? "bg-red-50 text-red-600" : "bg-stone-50 text-stone-600"
                                                     )}>
                                                         {p.status}
                                                     </Badge>
@@ -300,50 +314,50 @@ const RoomControlCenter = ({ roomId, onSuccess, trigger, open: externalOpen, onO
                                 {/* Config Sidebar */}
                                 <div className="lg:col-span-1 space-y-8 h-fit lg:sticky lg:top-0">
                                     <div className="bg-stone-50 rounded-[2rem] p-8 space-y-6">
-                                    <div className="flex justify-between items-center gap-3">
-                                        <h5 className="text-[10px] font-bold text-stone-900 uppercase tracking-widest">Configuration</h5>
-                                        {!editMode ? (
-                                            <Button
-                                                variant="outline"
-                                                size="sm"
-                                                className="h-9 px-4 rounded-xl border-stone-200 hover:bg-stone-100 text-[10px] font-bold uppercase tracking-widest"
-                                                onClick={() => setEditMode(true)}
-                                            >
-                                                <Settings2 className="h-3.5 w-3.5 mr-2" />
-                                                Edit
-                                            </Button>
-                                        ) : (
-                                            <div className="flex gap-2">
+                                        <div className="flex justify-between items-center gap-3">
+                                            <h5 className="text-[10px] font-bold text-stone-900 uppercase tracking-widest">Configuration</h5>
+                                            {!editMode ? (
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
-                                                    className="h-9 px-4 rounded-xl border-stone-200 text-[10px] font-bold uppercase tracking-widest"
-                                                    onClick={() => {
-                                                        setFormData({
-                                                            price: data.price.toString(),
-                                                            amenities: Array.isArray(data.amenities) ? data.amenities.join(", ") : "",
-                                                            agent_id: data.agent_id || "",
-                                                            cover_image_url: data.cover_image_url || "",
-                                                            block_id: data.block_id || "",
-                                                            floor_level: data.floor_level || "ground",
-                                                        });
-                                                        setEditMode(false);
-                                                    }}
+                                                    className="h-9 px-4 rounded-xl border-stone-200 hover:bg-stone-100 text-[10px] font-bold uppercase tracking-widest"
+                                                    onClick={() => setEditMode(true)}
                                                 >
-                                                    Cancel
+                                                    <Settings2 className="h-3.5 w-3.5 mr-2" />
+                                                    Edit
                                                 </Button>
-                                                <Button
-                                                    size="sm"
-                                                    className="h-9 px-4 rounded-xl bg-stone-900 text-white text-[10px] font-bold uppercase tracking-widest"
-                                                    onClick={handleUpdate}
-                                                    disabled={loading}
-                                                >
-                                                    <Save className="h-3.5 w-3.5 mr-2" />
-                                                    Save
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
+                                            ) : (
+                                                <div className="flex gap-2">
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="h-9 px-4 rounded-xl border-stone-200 text-[10px] font-bold uppercase tracking-widest"
+                                                        onClick={() => {
+                                                            setFormData({
+                                                                price: data.price.toString(),
+                                                                amenities: Array.isArray(data.amenities) ? data.amenities.join(", ") : "",
+                                                                agent_id: data.agent_id || "",
+                                                                cover_image_url: data.cover_image_url || "",
+                                                                block_id: data.block_id || "",
+                                                                floor_level: data.floor_level || "ground",
+                                                            });
+                                                            setEditMode(false);
+                                                        }}
+                                                    >
+                                                        Cancel
+                                                    </Button>
+                                                    <Button
+                                                        size="sm"
+                                                        className="h-9 px-4 rounded-xl bg-stone-900 text-white text-[10px] font-bold uppercase tracking-widest"
+                                                        onClick={handleUpdate}
+                                                        disabled={loading}
+                                                    >
+                                                        <Save className="h-3.5 w-3.5 mr-2" />
+                                                        Save
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
 
                                         <div className="space-y-4">
                                             <div className="space-y-2">
