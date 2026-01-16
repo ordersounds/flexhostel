@@ -91,9 +91,11 @@ interface Announcement {
 
 interface BroadcastCenterProps {
     isReadOnly?: boolean;
+    isAgent?: boolean;
+    announcementsOnly?: boolean;
 }
 
-const BroadcastCenter = ({ isReadOnly = false }: BroadcastCenterProps) => {
+const BroadcastCenter = ({ isReadOnly = false, isAgent = false, announcementsOnly = false }: BroadcastCenterProps) => {
     const isMobile = useIsMobile();
     const [currentUser, setCurrentUser] = useState<{
         id: string;
@@ -206,21 +208,55 @@ const BroadcastCenter = ({ isReadOnly = false }: BroadcastCenterProps) => {
         if (!currentUser) return;
 
         try {
-            // First try to fetch buildings by landlord_id
-            let { data, error } = await supabase
-                .from("buildings")
-                .select("id, name, address")
-                .eq("landlord_id", currentUser.id);
-
-            if (error) throw error;
-
-            // Fallback: if no buildings found and user is landlord role, fetch all buildings
-            // This handles the case where landlord_id might not be set on buildings
-            if ((!data || data.length === 0) && currentUser.role === 'landlord') {
-                const allBuildings = await supabase
+            let data: Building[] | null = null;
+            
+            if (isAgent) {
+                // For agents, fetch buildings where they are assigned
+                const { data: agentBuildings, error: agentError } = await supabase
                     .from("buildings")
-                    .select("id, name, address");
-                data = allBuildings.data;
+                    .select("id, name, address")
+                    .eq("agent_id", currentUser.id);
+
+                if (agentError) throw agentError;
+                
+                // Also fetch buildings where they have assigned rooms
+                const { data: roomBuildings, error: roomsError } = await supabase
+                    .from("rooms")
+                    .select("building_id, buildings(id, name, address)")
+                    .eq("agent_id", currentUser.id);
+
+                if (roomsError) throw roomsError;
+
+                // Combine and deduplicate
+                const buildingsMap = new Map<string, Building>();
+                (agentBuildings || []).forEach(b => buildingsMap.set(b.id, b));
+                (roomBuildings || []).forEach(r => {
+                    if (r.buildings && typeof r.buildings === 'object' && !Array.isArray(r.buildings)) {
+                        const building = r.buildings as Building;
+                        if (building.id) {
+                            buildingsMap.set(building.id, building);
+                        }
+                    }
+                });
+                data = Array.from(buildingsMap.values());
+            } else {
+                // For landlords, fetch buildings by landlord_id
+                const { data: landlordData, error } = await supabase
+                    .from("buildings")
+                    .select("id, name, address")
+                    .eq("landlord_id", currentUser.id);
+
+                if (error) throw error;
+
+                // Fallback: if no buildings found and user is landlord role, fetch all buildings
+                if ((!landlordData || landlordData.length === 0) && currentUser.role === 'landlord') {
+                    const allBuildings = await supabase
+                        .from("buildings")
+                        .select("id, name, address");
+                    data = allBuildings.data;
+                } else {
+                    data = landlordData;
+                }
             }
 
             setBuildings(data || []);
@@ -237,21 +273,65 @@ const BroadcastCenter = ({ isReadOnly = false }: BroadcastCenterProps) => {
         if (!currentUser) return;
 
         try {
-            // For landlords, fetch all announcements they created or for their buildings
-            if (currentUser.role === 'landlord') {
+            if (isAgent) {
+                // For agents, fetch announcements for buildings they're assigned to
+                const buildingIds = buildings.map(b => b.id);
+                
+                if (buildingIds.length === 0) {
+                    // Fetch announcements even if buildings aren't loaded yet
+                    const { data: agentRooms } = await supabase
+                        .from("rooms")
+                        .select("building_id")
+                        .eq("agent_id", currentUser.id);
+                    
+                    const roomBuildingIds = [...new Set((agentRooms || []).map(r => r.building_id))];
+                    
+                    if (roomBuildingIds.length === 0) {
+                        setAnnouncements([]);
+                        return;
+                    }
+
+                    const { data, error } = await supabase
+                        .from("announcements")
+                        .select(`
+                            *,
+                            building:buildings(name),
+                            creator:profiles!announcements_created_by_fkey(name, role)
+                        `)
+                        .or(`building_id.in.(${roomBuildingIds.join(',')}),building_id.is.null`)
+                        .order("created_at", { ascending: false });
+
+                    if (error) throw error;
+                    setAnnouncements(data || []);
+                } else {
+                    const { data, error } = await supabase
+                        .from("announcements")
+                        .select(`
+                            *,
+                            building:buildings(name),
+                            creator:profiles!announcements_created_by_fkey(name, role)
+                        `)
+                        .or(`building_id.in.(${buildingIds.join(',')}),building_id.is.null`)
+                        .order("created_at", { ascending: false });
+
+                    if (error) throw error;
+                    setAnnouncements(data || []);
+                }
+            } else if (currentUser.role === 'landlord') {
+                // For landlords, fetch all announcements they created or for their buildings
                 const { data, error } = await supabase
                     .from("announcements")
                     .select(`
                         *,
-                        building:buildings(name)
+                        building:buildings(name),
+                        creator:profiles!announcements_created_by_fkey(name, role)
                     `)
-                    .eq("created_by", currentUser.id)
                     .order("created_at", { ascending: false });
 
                 if (error) throw error;
                 setAnnouncements(data || []);
             } else {
-                // Get all building IDs owned by the landlord
+                // For tenants, get announcements for their buildings
                 const { data: landlordBuildings } = await supabase
                     .from("buildings")
                     .select("id")
@@ -264,12 +344,12 @@ const BroadcastCenter = ({ isReadOnly = false }: BroadcastCenterProps) => {
 
                 const buildingIds = landlordBuildings.map(b => b.id);
 
-                // Fetch announcements for all landlord's buildings
                 const { data, error } = await supabase
                     .from("announcements")
                     .select(`
                         *,
-                        building:buildings(name)
+                        building:buildings(name),
+                        creator:profiles!announcements_created_by_fkey(name, role)
                     `)
                     .or(`building_id.in.(${buildingIds.join(',')}),building_id.is.null`)
                     .order("created_at", { ascending: false });
@@ -423,29 +503,64 @@ const BroadcastCenter = ({ isReadOnly = false }: BroadcastCenterProps) => {
             setLoadingRecipients(true);
             setRecipients([]);
 
-            // Get all building IDs owned by the landlord (or all buildings if landlord role)
-            let { data: landlordBuildings, error: buildingsError } = await supabase
-                .from("buildings")
-                .select("id, agent_id")
-                .eq("landlord_id", currentUser.id);
+            let buildingIds: string[] = [];
+            let agentIds: string[] = [];
 
-            if (buildingsError) throw buildingsError;
+            if (isAgent) {
+                // For agents, get buildings they're assigned to
+                const { data: agentRooms } = await supabase
+                    .from("rooms")
+                    .select("building_id")
+                    .eq("agent_id", currentUser.id);
 
-            // Fallback: if no buildings found and user is landlord, fetch all buildings
-            if ((!landlordBuildings || landlordBuildings.length === 0) && currentUser.role === 'landlord') {
-                const allBuildings = await supabase
+                buildingIds = [...new Set((agentRooms || []).map(r => r.building_id))];
+
+                // Also get landlord ID for the agent to message
+                const { data: landlordBuildings } = await supabase
                     .from("buildings")
-                    .select("id, agent_id");
-                landlordBuildings = allBuildings.data;
+                    .select("landlord_id")
+                    .in("id", buildingIds);
+
+                const landlordIds = [...new Set((landlordBuildings || []).map(b => b.landlord_id).filter(Boolean))] as string[];
+
+                // Get landlord profile
+                if (landlordIds.length > 0) {
+                    const { data: landlords } = await supabase
+                        .from("profiles")
+                        .select("id, name, email, role, photo_url")
+                        .in("id", landlordIds);
+
+                    if (landlords) {
+                        setRecipients(prev => [...prev, ...landlords.map(l => ({ ...l, type: 'agent' as const }))]);
+                    }
+                }
+            } else {
+                // For landlords, get buildings by landlord_id
+                let { data: landlordBuildings, error: buildingsError } = await supabase
+                    .from("buildings")
+                    .select("id, agent_id")
+                    .eq("landlord_id", currentUser.id);
+
+                if (buildingsError) throw buildingsError;
+
+                // Fallback: if no buildings found and user is landlord, fetch all buildings
+                if ((!landlordBuildings || landlordBuildings.length === 0) && currentUser.role === 'landlord') {
+                    const allBuildings = await supabase
+                        .from("buildings")
+                        .select("id, agent_id");
+                    landlordBuildings = allBuildings.data;
+                }
+
+                if (!landlordBuildings || landlordBuildings.length === 0) {
+                    toast.info("No buildings found. Add buildings to message tenants.");
+                    return;
+                }
+
+                buildingIds = landlordBuildings.map(b => b.id);
+                agentIds = landlordBuildings.map(b => b.agent_id).filter(Boolean) as string[];
             }
 
-            if (!landlordBuildings || landlordBuildings.length === 0) {
-                toast.info("No buildings found. Add buildings to message tenants.");
-                return;
-            }
-
-            const buildingIds = landlordBuildings.map(b => b.id);
-            const agentIds = landlordBuildings.map(b => b.agent_id).filter(Boolean) as string[];
+            // buildingIds and agentIds are already set above
 
             // Get all rooms in landlord's buildings
             const { data: rooms, error: roomsError } = await supabase
@@ -619,16 +734,20 @@ const BroadcastCenter = ({ isReadOnly = false }: BroadcastCenterProps) => {
                 </div>
             </div>
 
-            <Tabs defaultValue="messages" className="w-full">
+            <Tabs defaultValue={announcementsOnly ? "announcements" : "messages"} className="w-full">
                 <TabsList className={cn("bg-stone-100/50 p-1.5 rounded-[1.5rem] flex", isMobile ? "flex-col h-auto space-y-1 mb-8" : "w-fit mb-12")}>
-                    <TabsTrigger value="messages" className={cn("rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900", isMobile ? "py-3 px-6" : "px-8 py-3.5")}>
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Messages
-                    </TabsTrigger>
-                    <TabsTrigger value="groups" className={cn("rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900", isMobile ? "py-3 px-6" : "px-8 py-3.5")}>
-                        <Users className="h-4 w-4 mr-2" />
-                        Group Chats
-                    </TabsTrigger>
+                    {!announcementsOnly && (
+                        <>
+                            <TabsTrigger value="messages" className={cn("rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900", isMobile ? "py-3 px-6" : "px-8 py-3.5")}>
+                                <MessageSquare className="h-4 w-4 mr-2" />
+                                Messages
+                            </TabsTrigger>
+                            <TabsTrigger value="groups" className={cn("rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900", isMobile ? "py-3 px-6" : "px-8 py-3.5")}>
+                                <Users className="h-4 w-4 mr-2" />
+                                Group Chats
+                            </TabsTrigger>
+                        </>
+                    )}
                     <TabsTrigger value="announcements" className={cn("rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-lg text-xs font-bold uppercase tracking-widest text-stone-400 data-[state=active]:text-stone-900", isMobile ? "py-3 px-6" : "px-8 py-3.5")}>
                         <Megaphone className="h-4 w-4 mr-2" />
                         Announcements
@@ -1398,14 +1517,30 @@ const BroadcastCenter = ({ isReadOnly = false }: BroadcastCenterProps) => {
                             </div>
                             <ScrollArea className="h-[400px]">
                                 <div className="p-6 space-y-6">
-                                    {announcements.map((announcement) => (
-                                        <div key={announcement.id} className="border-l-4 border-primary pl-6">
+                                    {announcements.map((announcement: any) => (
+                                        <div key={announcement.id} className={cn("border-l-4 pl-6", announcement.creator?.role === 'agent' ? "border-blue-500" : "border-primary")}>
                                             <div className="flex justify-between items-start mb-2">
-                                                <h4 className="text-sm font-bold text-stone-900">{announcement.title}</h4>
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="text-sm font-bold text-stone-900">{announcement.title}</h4>
+                                                    {announcement.creator?.role === 'agent' && (
+                                                        <Badge className="text-[8px] px-1.5 py-0.5 bg-blue-100 text-blue-700 border-blue-200">
+                                                            Agent
+                                                        </Badge>
+                                                    )}
+                                                    {announcement.creator?.role === 'landlord' && (
+                                                        <Badge className="text-[8px] px-1.5 py-0.5 bg-amber-100 text-amber-700 border-amber-200">
+                                                            <Crown className="h-2.5 w-2.5 mr-0.5" />
+                                                            Landlord
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                                 <span className="text-[10px] text-stone-400">
                                                     {formatTime(announcement.created_at)}
                                                 </span>
                                             </div>
+                                            {announcement.creator?.name && (
+                                                <p className="text-[10px] text-stone-400 mb-1">By {announcement.creator.name}</p>
+                                            )}
                                             <p className="text-sm text-stone-600 mb-3">{announcement.content}</p>
                                             {announcement.building ? (
                                                 <Badge className="text-[8px] px-2 py-1" variant="outline">

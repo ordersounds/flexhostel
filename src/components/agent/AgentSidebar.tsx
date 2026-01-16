@@ -7,11 +7,14 @@ import {
     Megaphone,
     LogOut,
     ChevronRight,
-    Home
+    Home,
+    MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
+import { Badge } from "@/components/ui/badge";
 
 interface AgentSidebarProps {
     onLogout?: () => void;
@@ -22,9 +25,11 @@ interface AgentSidebarProps {
 const AgentSidebar = ({ onLogout, isOpen, onClose }: AgentSidebarProps) => {
     const isMobile = useIsMobile();
     const location = useLocation();
+    const { unreadCount } = useUnreadMessages();
 
     const navItems = [
         { label: "My Rooms", icon: Home, path: "/agent" },
+        { label: "Messages", icon: MessageSquare, path: "/agent/messages", badge: unreadCount > 0 ? unreadCount : undefined },
         { label: "Announcements", icon: Megaphone, path: "/agent/announcements" },
     ];
 
@@ -58,6 +63,11 @@ const AgentSidebar = ({ onLogout, isOpen, onClose }: AgentSidebarProps) => {
                                 <div className="flex items-center gap-3">
                                     <item.icon className={cn("h-5 w-5", isActive ? "text-primary" : "text-stone-300 group-hover:text-stone-600")} />
                                     <span className="text-sm font-bold tracking-tight uppercase tracking-widest text-[10px]">{item.label}</span>
+                                    {item.badge && (
+                                        <Badge className="h-5 min-w-5 px-1.5 text-[10px] font-bold bg-primary text-white border-none">
+                                            {item.badge > 99 ? "99+" : item.badge}
+                                        </Badge>
+                                    )}
                                 </div>
                                 <ChevronRight className={cn("h-4 w-4 opacity-0 transition-opacity", !isActive && "group-hover:opacity-100")} />
                             </Link>

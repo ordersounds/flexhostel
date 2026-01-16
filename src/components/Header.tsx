@@ -4,6 +4,7 @@ import { Building2, User, LogOut, LayoutDashboard, ChevronDown, Menu, X, Message
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/components/AuthProvider";
+import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -17,6 +18,7 @@ import {
 const Header = () => {
   const navigate = useNavigate();
   const { user, profile, loading, signOut } = useAuth();
+  const { unreadCount } = useUnreadMessages();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -28,7 +30,14 @@ const Header = () => {
 
   const getDashboardLink = () => {
     if (profile?.role === "landlord") return "/landlord";
+    if (profile?.role === "agent") return "/agent";
     return "/dashboard";
+  };
+
+  const getMessagesLink = () => {
+    if (profile?.role === "landlord") return "/landlord/messages";
+    if (profile?.role === "agent") return "/agent/messages";
+    return "/dashboard?tab=messages";
   };
 
   const navLinks = [
@@ -69,10 +78,14 @@ const Header = () => {
           ) : user ? (
             <div className="flex items-center gap-2">
               {/* Message Indicator */}
-              <Link to="/dashboard?tab=messages">
+              <Link to={getMessagesLink()}>
                 <Button variant="ghost" size="icon" className="rounded-full h-11 w-11 border border-stone-100 hover:bg-stone-50 text-stone-400 hover:text-primary transition-colors relative">
                   <MessageSquare className="h-5 w-5" />
-                  {/* Optional: Add unread dot here if we have that state later */}
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 min-w-5 px-1 bg-primary text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
                 </Button>
               </Link>
 

@@ -91,7 +91,8 @@ const AgentDashboard = () => {
                 <div className="pb-24 max-w-7xl mx-auto">
                     <Routes>
                         <Route path="/" element={<AgentRoomsOverview />} />
-                        <Route path="/announcements" element={<BroadcastCenter isReadOnly={true} />} />
+                        <Route path="/messages" element={<BroadcastCenter isAgent={true} />} />
+                        <Route path="/announcements" element={<BroadcastCenter isAgent={true} announcementsOnly={true} />} />
                         <Route path="*" element={<Navigate to="/agent" replace />} />
                     </Routes>
                 </div>
