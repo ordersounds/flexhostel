@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
         .select(`
           *,
           room:rooms(price, id),
-          applicant:profiles(id, name)
+          applicant:profiles!applications_user_id_fkey(id, name)
         `)
         .eq("id", application_id)
         .single();
