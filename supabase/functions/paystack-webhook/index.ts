@@ -125,9 +125,16 @@ Deno.serve(async (req) => {
               .update({ status: "occupied" })
               .eq("id", application.room_id);
 
+            // Update user role to tenant (including phone number sync)
+            const profileUpdates: any = { role: "tenant" };
+            const submittedPhone = (application.submitted_data as any)?.personal?.phone;
+            if (submittedPhone) {
+              profileUpdates.phone_number = submittedPhone;
+            }
+
             await supabase
               .from("profiles")
-              .update({ role: "tenant" })
+              .update(profileUpdates)
               .eq("id", payment.user_id);
           }
         }
