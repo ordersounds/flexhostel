@@ -62,7 +62,9 @@ const Dashboard = () => {
       ? "approved"
       : applications?.some(a => a.status === "pending")
         ? "pending"
-        : "none";
+        : applications?.some(a => a.status === "rejected")
+          ? "rejected"
+          : "none";
 
   // Update URL when tab changes
   const handleTabChange = (tab: string) => {
@@ -410,9 +412,11 @@ const Dashboard = () => {
                   ? "Everything you need to manage your premium residence in Okitipupa."
                   : userStage === "approved"
                     ? "Your application is successful. Complete your booking to secure your suite."
-                    : applications.length > 0
-                      ? "Track your application and connect with our flagship hostel team."
-                      : "Find your perfect room and start your flagship residency."}
+                    : userStage === "rejected"
+                      ? "Your recent application was not successful. Review the details below to re-apply."
+                      : applications.length > 0
+                        ? "Track your application and connect with our flagship hostel team."
+                        : "Find your perfect room and start your flagship residency."}
               </p>
             </div>
 
@@ -699,120 +703,158 @@ const Dashboard = () => {
                   <div className="space-y-8">
                     {/* Applicant & Focus Views */}
                     <div className="grid md:grid-cols-2 gap-8 items-stretch">
-                      {userStage === "approved" || userStage === "pending" ? (
-                        <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border border-stone-100 shadow-xl overflow-hidden relative">
-                          <div className="relative z-10">
-                            <h3 className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-8">
-                              {userStage === "approved" ? "Finalize Your Booking" : "Application Status"}
-                            </h3>
+                      {userStage === "approved" || userStage === "pending" || userStage === "rejected" ? (
+                        <div className="space-y-8">
+                          <div className="bg-white rounded-[2.5rem] p-8 md:p-12 border border-stone-100 shadow-xl overflow-hidden relative transition-all hover:shadow-2xl">
+                            <div className="relative z-10">
+                              <h3 className="text-[10px] font-bold text-primary uppercase tracking-[0.2em] mb-8">
+                                {userStage === "approved" ? "Finalize Your Booking" :
+                                  userStage === "pending" ? "Application Status" : "Recent Update"}
+                              </h3>
 
-                            {/* Focus Room Card */}
-                            <div className="flex gap-6 items-center mb-10">
-                              <div className="h-20 w-32 rounded-2xl overflow-hidden shadow-lg border-2 border-white">
-                                <img src={applications[0]?.rooms.cover_image_url || "/placeholder.svg"} alt="Room" className="w-full h-full object-cover" />
-                              </div>
-                              <div>
-                                <h4 className="font-display text-3xl font-bold text-stone-900 tracking-tight leading-none mb-1">
-                                  Suite {applications[0]?.rooms.room_name}
-                                </h4>
-                                <p className="text-stone-400 text-[10px] font-bold uppercase tracking-widest">{applications[0]?.rooms.buildings.name}</p>
-                              </div>
-                            </div>
-
-                            {userStage === "approved" && (
-                              <div className="mt-8 p-6 bg-amber-50 rounded-2xl border border-amber-100/50 flex items-start gap-4 animate-pulse">
-                                <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
-                                <div>
-                                  <p className="text-xs font-bold text-amber-800 uppercase tracking-widest">Limited Guarantee</p>
-                                  <p className="text-stone-500 text-[11px] font-medium leading-relaxed mt-1">This suite is reserved for you for the next 48 hours. After this period, it will be released back to the general pool.</p>
+                              {/* Focus Room Card */}
+                              <div className="flex gap-6 items-center mb-10">
+                                <div className="h-20 w-32 rounded-2xl overflow-hidden shadow-lg border-2 border-white">
+                                  <img src={applications[0]?.rooms.cover_image_url || "/placeholder.svg"} alt="Room" className="w-full h-full object-cover" />
+                                </div>
+                                <div className="min-w-0">
+                                  <h4 className="font-display text-3xl font-bold text-stone-900 tracking-tight leading-none mb-1 truncate">
+                                    Suite {applications[0]?.rooms.room_name}
+                                  </h4>
+                                  <p className="text-stone-400 text-[10px] font-bold uppercase tracking-widest">{applications[0]?.rooms.buildings.name}</p>
                                 </div>
                               </div>
-                            )}
 
-                            {userStage === "approved" && charges.length > 0 && (
-                              <div className="space-y-4 mb-10 pt-8 border-t border-stone-100">
-                                {/* Rent Payment Section */}
-                                <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="text-stone-900 font-bold">Annual Rent</span>
-                                    <span className="text-lg font-bold text-stone-900">₦{applications[0]?.rooms.price?.toLocaleString()}</span>
-                                  </div>
-                                  {isRentPaid(applications[0]?.id) ? (
-                                    <Badge className="bg-green-50 text-green-700 border-none text-[8px] tracking-widest font-bold uppercase">Paid</Badge>
-                                  ) : (
-                                    <Button
-                                      onClick={() => handlePayment('rent', applications[0])}
-                                      disabled={payingItem === 'rent'}
-                                      className="w-full mt-2 h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest"
-                                    >
-                                      {payingItem === 'rent' ? "Processing..." : "Pay Rent"}
-                                    </Button>
-                                  )}
-                                </div>
-
-                                {/* Charges Section */}
-                                <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-6">Building Charges</p>
-                                {charges.map(charge => (
-                                  <div key={charge.id} className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                                    <div className="flex justify-between items-center mb-2">
-                                      <span className="text-stone-500 font-medium">{charge.name}</span>
-                                      <span className="text-stone-900 font-bold">₦{charge.amount.toLocaleString()}</span>
+                              {userStage === "rejected" && (
+                                <div className="space-y-6">
+                                  <div className="p-8 bg-red-50/50 rounded-3xl border border-red-100/50">
+                                    <div className="flex items-center gap-3 text-red-600 font-bold uppercase tracking-widest text-[10px] mb-4">
+                                      <XCircle className="h-4 w-4" />
+                                      <span>Application Declined</span>
                                     </div>
-                                    {isChargeFullyPaid(charge.id) ? (
+                                    <p className="text-stone-800 font-bold mb-2">Notice from Landlord:</p>
+                                    <p className="text-stone-500 text-sm leading-relaxed mb-6 font-medium italic">
+                                      "{applications[0]?.rejection_reason || "No specific reason provided. Please contact support for more information."}"
+                                    </p>
+                                    <Button asChild className="w-full h-14 rounded-2xl bg-stone-900 text-white font-bold uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20 active:scale-95 transition-all">
+                                      <Link to="/okitipupa/rooms">
+                                        Browse Other Available Rooms
+                                      </Link>
+                                    </Button>
+                                  </div>
+                                  <p className="text-center text-[10px] font-bold text-stone-300 uppercase tracking-widest">You can submit a new application at any time.</p>
+                                </div>
+                              )}
+
+                              {userStage === "approved" && (
+                                <div className="mt-8 p-6 bg-amber-50 rounded-2xl border border-amber-100/50 flex items-start gap-4 animate-pulse">
+                                  <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
+                                  <div>
+                                    <p className="text-xs font-bold text-amber-800 uppercase tracking-widest">Limited Guarantee</p>
+                                    <p className="text-stone-500 text-[11px] font-medium leading-relaxed mt-1">This suite is reserved for you for the next 48 hours. After this period, it will be released back to the general pool.</p>
+                                  </div>
+                                </div>
+                              )}
+
+                              {userStage === "approved" && (
+                                <div className="space-y-4 mb-10 pt-8 border-t border-stone-100">
+                                  <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                                    <div className="flex justify-between items-center mb-2">
+                                      <span className="text-stone-900 font-bold">Annual Rent</span>
+                                      <span className="text-lg font-bold text-stone-900">₦{applications[0]?.rooms.price?.toLocaleString()}</span>
+                                    </div>
+                                    {isRentPaid(applications[0]?.id) ? (
                                       <Badge className="bg-green-50 text-green-700 border-none text-[8px] tracking-widest font-bold uppercase">Paid</Badge>
                                     ) : (
                                       <Button
-                                        onClick={() => handlePayment('charge', applications[0], charge)}
-                                        disabled={payingItem === charge.id}
-                                        variant="outline"
-                                        className="w-full mt-2 h-10 rounded-xl border-stone-200 font-bold text-xs uppercase tracking-widest"
+                                        onClick={() => handlePayment('rent', applications[0])}
+                                        disabled={payingItem === 'rent'}
+                                        className="w-full mt-2 h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary/20"
                                       >
-                                        {payingItem === charge.id ? "Processing..." : `Pay ${charge.name}`}
+                                        {payingItem === 'rent' ? "Processing..." : "Pay Rent"}
                                       </Button>
                                     )}
                                   </div>
-                                ))}
 
-                                <div className="pt-3 mt-3 border-t border-stone-200/50 flex justify-between items-center">
-                                  <span className="text-[10px] font-bold text-stone-900 uppercase">Total Initial Payment</span>
-                                  <span className="text-lg font-bold text-primary">
-                                    ₦{(applications[0]?.rooms.price + charges.reduce((acc, c) => acc + c.amount, 0)).toLocaleString()}
-                                  </span>
-                                </div>
-                              </div>
-                            )}
+                                  {charges.length > 0 && (
+                                    <>
+                                      <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest mt-6">Building Charges</p>
+                                      {charges.map(charge => (
+                                        <div key={charge.id} className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
+                                          <div className="flex justify-between items-center mb-2">
+                                            <span className="text-stone-500 font-medium">{charge.name}</span>
+                                            <span className="text-stone-900 font-bold">₦{charge.amount.toLocaleString()}</span>
+                                          </div>
+                                          {isChargeFullyPaid(charge.id) ? (
+                                            <Badge className="bg-green-50 text-green-700 border-none text-[8px] tracking-widest font-bold uppercase">Paid</Badge>
+                                          ) : (
+                                            <Button
+                                              onClick={() => handlePayment('charge', applications[0], charge)}
+                                              disabled={payingItem === charge.id}
+                                              variant="outline"
+                                              className="w-full mt-2 h-10 rounded-xl border-stone-200 font-bold text-xs uppercase tracking-widest"
+                                            >
+                                              {payingItem === charge.id ? "Processing..." : `Pay ${charge.name}`}
+                                            </Button>
+                                          )}
+                                        </div>
+                                      ))}
 
-                            {userStage === "approved" && charges.length === 0 && (
-                              <div className="space-y-4 mb-10 pt-8 border-t border-stone-100">
-                                <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
-                                  <div className="flex justify-between items-center mb-2">
-                                    <span className="text-stone-900 font-bold">Annual Rent</span>
-                                    <span className="text-lg font-bold text-stone-900">₦{applications[0]?.rooms.price?.toLocaleString()}</span>
-                                  </div>
-                                  {isRentPaid(applications[0]?.id) ? (
-                                    <Badge className="bg-green-50 text-green-700 border-none text-[8px] tracking-widest font-bold uppercase">Paid</Badge>
-                                  ) : (
-                                    <Button
-                                      onClick={() => handlePayment('rent', applications[0])}
-                                      disabled={payingItem === 'rent'}
-                                      className="w-full mt-2 h-10 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs uppercase tracking-widest"
-                                    >
-                                      {payingItem === 'rent' ? "Processing..." : "Pay Rent"}
-                                    </Button>
+                                      <div className="pt-3 mt-3 border-t border-stone-200/50 flex justify-between items-center">
+                                        <span className="text-[10px] font-bold text-stone-900 uppercase">Total Initial Payment</span>
+                                        <span className="text-lg font-bold text-primary">
+                                          ₦{(applications[0]?.rooms.price + charges.reduce((acc, c) => acc + c.amount, 0)).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    </>
                                   )}
                                 </div>
-                              </div>
-                            )}
+                              )}
 
-                            {userStage === "pending" && (
-                              <div className="space-y-4">
-                                <Button variant="outline" className="w-full h-14 rounded-2xl border-stone-100 text-stone-500 font-bold uppercase tracking-widest text-[10px] cursor-default bg-stone-50/50">
-                                  <span>Waiting for Official Approval</span>
-                                </Button>
-                                <p className="text-center text-[10px] font-bold text-stone-300 uppercase tracking-widest">Verification in progress</p>
-                              </div>
-                            )}
+                              {userStage === "pending" && (
+                                <div className="space-y-4">
+                                  <Button variant="outline" className="w-full h-14 rounded-2xl border-stone-100 text-stone-500 font-bold uppercase tracking-widest text-[10px] cursor-default bg-stone-50/50">
+                                    <span>Waiting for Official Approval</span>
+                                  </Button>
+                                  <p className="text-center text-[10px] font-bold text-stone-300 uppercase tracking-widest">Verification in progress</p>
+                                </div>
+                              )}
+                            </div>
                           </div>
+
+                          {applications.length > 1 && (
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-300">
+                              <h3 className="font-display text-2xl font-bold text-stone-900 mb-6 tracking-tight">Application Activity</h3>
+                              <div className="space-y-3">
+                                {applications.map((app, idx) => (
+                                  <div key={app.id} className={cn(
+                                    "flex items-center justify-between p-4 rounded-2xl border transition-all",
+                                    idx === 0
+                                      ? "bg-stone-50 border-stone-100 shadow-sm"
+                                      : "bg-white border-stone-50/50 opacity-60 hover:opacity-100 hover:border-stone-100"
+                                  )}>
+                                    <div className="flex items-center gap-4 min-w-0">
+                                      <div className="h-10 w-10 rounded-xl overflow-hidden shadow-sm flex-shrink-0 grayscale-[0.5]">
+                                        <img src={app.rooms.cover_image_url || "/placeholder.svg"} className="h-full w-full object-cover" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-bold text-stone-900 leading-tight truncate">Suite {app.rooms.room_name}</p>
+                                        <p className="text-[9px] font-bold text-stone-400 uppercase tracking-widest">{new Date(app.created_at).toLocaleDateString()}</p>
+                                      </div>
+                                    </div>
+                                    <Badge className={cn(
+                                      "rounded-full px-3 py-1 text-[8px] font-bold uppercase tracking-widest shadow-sm",
+                                      app.status === "approved" ? "bg-green-50 text-green-700 border border-green-100" :
+                                        app.status === "rejected" ? "bg-red-50 text-red-700 border border-red-100" :
+                                          "bg-amber-50 text-amber-700 border border-amber-100"
+                                    )}>
+                                      {app.status}
+                                    </Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ) : (
                         <div className="bg-stone-900 rounded-[2.5rem] p-12 text-white relative overflow-hidden flex flex-col justify-between group min-h-[450px]">
@@ -832,6 +874,7 @@ const Dashboard = () => {
                           </Button>
                         </div>
                       )}
+
 
                       <div className="flex flex-col gap-6">
                         <div className="bg-white rounded-[2.5rem] p-8 border border-stone-100 shadow-sm flex-1 flex flex-col justify-between">

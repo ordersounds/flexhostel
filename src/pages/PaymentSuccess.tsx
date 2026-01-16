@@ -10,7 +10,7 @@ const PaymentSuccess = () => {
     const [searchParams] = useSearchParams();
     const reference = searchParams.get("reference");
     const paymentType = searchParams.get("type") || "rent";
-    
+
     const [verifying, setVerifying] = useState(true);
     const [verified, setVerified] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -119,13 +119,22 @@ const PaymentSuccess = () => {
 
                     <div className="mb-16">
                         <h1 className="font-display text-5xl md:text-7xl font-bold text-stone-900 tracking-tighter mb-6 leading-none animate-in fade-in slide-in-from-bottom-4 duration-700">
-                            Payment <br />
-                            <span className="text-primary italic font-medium">Confirmed</span>.
+                            {paymentType === 'rent' ? (
+                                <>
+                                    Congratulations<span className="text-primary">!</span> <br />
+                                    <span className="text-primary italic font-medium text-3xl md:text-5xl">You're officially a Tenant</span>
+                                </>
+                            ) : (
+                                <>
+                                    Payment <br />
+                                    <span className="text-primary italic font-medium">Confirmed</span>.
+                                </>
+                            )}
                         </h1>
                         <p className="text-stone-500 text-xl md:text-2xl max-w-2xl mx-auto font-medium leading-relaxed">
-                            {paymentType === 'rent' 
-                                ? "Your transmission has been verified. Welcome to the flagship Flex Hostel residence in Okitipupa."
-                                : "Your charge payment has been successfully processed and recorded."}
+                            {paymentType === 'rent'
+                                ? "Your residency has been verified. Welcome to the flagship Flex Hostel community in Okitipupa. Your premium student journey begins now."
+                                : "Your charge payment has been successfully processed and recorded in your ledger."}
                         </p>
                         {reference && (
                             <p className="mt-6 text-stone-400 font-mono text-sm uppercase tracking-widest">
@@ -141,13 +150,13 @@ const PaymentSuccess = () => {
                             </div>
                             <h3 className="font-display text-2xl font-bold text-stone-900 mb-2">Join the Community</h3>
                             <p className="text-stone-500 mb-6 font-medium">
-                                {paymentType === 'rent' 
+                                {paymentType === 'rent'
                                     ? "The Okitipupa Building House Chat is now active on your dashboard."
                                     : "Check your dashboard to see updated payment status."}
                             </p>
-                            <Button asChild className="w-full rounded-2xl bg-stone-900 text-white font-bold h-12 uppercase tracking-widest text-[10px]">
+                            <Button asChild className="w-full rounded-2xl bg-stone-900 text-white font-bold h-12 uppercase tracking-widest text-[10px] shadow-xl shadow-stone-900/20 transition-all hover:scale-[1.02] active:scale-95">
                                 <Link to="/dashboard">
-                                    {paymentType === 'rent' ? "Enter House Chat" : "View Dashboard"}
+                                    {paymentType === 'rent' ? "Go to Resident Dashboard" : "View Dashboard"}
                                 </Link>
                             </Button>
                         </div>

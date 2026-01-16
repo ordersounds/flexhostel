@@ -85,7 +85,7 @@ const LandlordDashboard = () => {
     }
 
     return (
-        <div className="min-h-screen bg-stone-50 flex">
+        <div className="min-h-screen bg-stone-50 flex overflow-x-hidden">
             {/* Modular Sidebar */}
             <LandlordSidebar
                 onLogout={handleLogout}
@@ -106,12 +106,12 @@ const LandlordDashboard = () => {
 
             {/* Main Content Area */}
             <main className={cn(
-                "flex-1 min-h-screen relative transition-all duration-300",
+                "flex-1 min-w-0 min-h-screen relative transition-all duration-300",
                 isMobile ? "p-6" : "ml-80 p-12"
             )}>
 
                 {/* Main Dynamic Viewport */}
-                <div className="pb-24 max-w-7xl mx-auto">
+                <div className="pb-24 w-full max-w-7xl mx-auto overflow-hidden">
                     <Routes>
                         <Route path="/" element={<LandlordOverview />} />
                         <Route path="/properties" element={<PropertyPortfolio />} />
