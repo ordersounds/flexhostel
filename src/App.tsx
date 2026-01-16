@@ -11,6 +11,7 @@ import RoomDetail from "./pages/RoomDetail";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import LandlordDashboard from "./pages/LandlordDashboard";
+import AgentDashboard from "./pages/AgentDashboard";
 import PaymentSuccess from "./pages/PaymentSuccess"; // Added import for PaymentSuccess
 import ApplicationForm from "./pages/ApplicationForm";
 import NotFound from "./pages/NotFound";
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/landlord/*" element={<LandlordDashboard />} />
+            <Route path="/agent/*" element={<AgentDashboard />} />
             <Route path="/dashboard/success" element={<PaymentSuccess />} />
             {/* Dynamic building routes */}
             <Route path="/:buildingSlug" element={<BuildingDetail />} />

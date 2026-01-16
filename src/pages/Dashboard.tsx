@@ -100,6 +100,11 @@ const Dashboard = () => {
           return;
         }
 
+        if (profile?.role === "agent") {
+          navigate("/agent");
+          return;
+        }
+
         if (!isMounted) return;
 
         setLoading(false);

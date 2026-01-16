@@ -89,7 +89,11 @@ interface Announcement {
     };
 }
 
-const BroadcastCenter = () => {
+interface BroadcastCenterProps {
+    isReadOnly?: boolean;
+}
+
+const BroadcastCenter = ({ isReadOnly = false }: BroadcastCenterProps) => {
     const isMobile = useIsMobile();
     const [currentUser, setCurrentUser] = useState<{
         id: string;
@@ -609,7 +613,7 @@ const BroadcastCenter = () => {
                     <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         Communication Hub<span className="text-primary">.</span>
                     </h2>
-                    <p className="text-stone-500 mt-2 font-medium" style={{fontSize: isMobile ? '14px' : '18px'}}>
+                    <p className="text-stone-500 mt-2 font-medium" style={{ fontSize: isMobile ? '14px' : '18px' }}>
                         Connect with residents, manage announcements, and oversee building discussions.
                     </p>
                 </div>
@@ -1349,7 +1353,7 @@ const BroadcastCenter = () => {
                                     <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Title</label>
                                     <Input
                                         value={newAnnouncement.title}
-                                        onChange={(e) => setNewAnnouncement({...newAnnouncement, title: e.target.value})}
+                                        onChange={(e) => setNewAnnouncement({ ...newAnnouncement, title: e.target.value })}
                                         placeholder="Announcement title..."
                                         className="rounded-xl"
                                     />
@@ -1358,7 +1362,7 @@ const BroadcastCenter = () => {
                                     <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Building</label>
                                     <select
                                         value={newAnnouncement.building_id}
-                                        onChange={(e) => setNewAnnouncement({...newAnnouncement, building_id: e.target.value})}
+                                        onChange={(e) => setNewAnnouncement({ ...newAnnouncement, building_id: e.target.value })}
                                         className="w-full h-12 px-4 rounded-xl border border-stone-200 bg-white text-sm"
                                     >
                                         <option value="">All Buildings</option>
@@ -1371,7 +1375,7 @@ const BroadcastCenter = () => {
                                     <label className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2 block">Message</label>
                                     <Textarea
                                         value={newAnnouncement.content}
-                                        onChange={(e) => setNewAnnouncement({...newAnnouncement, content: e.target.value})}
+                                        onChange={(e) => setNewAnnouncement({ ...newAnnouncement, content: e.target.value })}
                                         placeholder="Write your announcement..."
                                         className="rounded-xl min-h-[120px]"
                                     />
