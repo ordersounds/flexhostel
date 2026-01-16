@@ -189,15 +189,21 @@ Deno.serve(async (req) => {
           // Continue with other updates even if this fails
         }
 
-        // Update room status and user role
+        // Update room status and user role (including phone number sync)
         await supabase
           .from("rooms")
           .update({ status: "occupied" })
           .eq("id", application.room.id);
 
+        const profileUpdates: any = { role: "tenant" };
+        const submittedPhone = (application.submitted_data as any)?.personal?.phone;
+        if (submittedPhone) {
+          profileUpdates.phone_number = submittedPhone;
+        }
+
         await supabase
           .from("profiles")
-          .update({ role: "tenant" })
+          .update(profileUpdates)
           .eq("id", application.user_id);
       }
 

@@ -135,13 +135,33 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                 })
             );
 
+            // Fetch application data for phone fallback
+            const { data: appData } = await supabase
+                .from("applications")
+                .select("submitted_data")
+                .eq("user_id", tenant.id)
+                .order("created_at", { ascending: false });
+
             // Senior Engineer Note: Safety deduplication just in case double-entry occurs in future relationships
             const uniquePaymentsMap = new Map();
             (paymentData || []).forEach(p => uniquePaymentsMap.set(p.id, p));
             const deduplicatedPayments = Array.from(uniquePaymentsMap.values());
 
+            // Resolve phone number fallback
+            let displayPhone = tenant.phone_number;
+            if (!displayPhone && appData && appData.length > 0) {
+                for (const app of appData) {
+                    const phone = (app.submitted_data as any)?.personal?.phone;
+                    if (phone) {
+                        displayPhone = phone;
+                        break;
+                    }
+                }
+            }
+
             setTenantData({
                 ...tenant,
+                phone_number: displayPhone,
                 tenancy: tenancyData,
                 recentPayments: deduplicatedPayments,
                 buildingCharges: chargesWithStatus

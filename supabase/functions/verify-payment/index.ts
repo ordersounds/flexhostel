@@ -49,9 +49,9 @@ Deno.serve(async (req) => {
     if (!verifyData.status || verifyData.data?.status !== "success") {
       console.error("Payment verification failed:", verifyData.message);
       return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: verifyData.message || "Payment verification failed" 
+        JSON.stringify({
+          success: false,
+          error: verifyData.message || "Payment verification failed"
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -157,10 +157,16 @@ Deno.serve(async (req) => {
             .update({ status: "occupied" })
             .eq("id", application.room_id);
 
-          // Update user role to tenant
+          // Update user role to tenant (including phone number sync)
+          const profileUpdates: any = { role: "tenant" };
+          const submittedPhone = (application.submitted_data as any)?.personal?.phone;
+          if (submittedPhone) {
+            profileUpdates.phone_number = submittedPhone;
+          }
+
           await supabase
             .from("profiles")
-            .update({ role: "tenant" })
+            .update(profileUpdates)
             .eq("id", payment.user_id);
 
           console.log("Room status and user role updated");
@@ -169,8 +175,8 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
+      JSON.stringify({
+        success: true,
         message: "Payment verified successfully",
         payment_type: payment.payment_type
       }),

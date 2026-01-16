@@ -21,7 +21,7 @@ const ResidentsManagement = () => {
     const fetchTenants = async () => {
         setLoading(true);
         try {
-            // Fetch tenants with their tenancy and room information
+            // Fetch tenants with their tenancy, room, and application information
             const { data: tenantData, error } = await supabase
                 .from("profiles")
                 .select(`
@@ -41,6 +41,9 @@ const ResidentsManagement = () => {
                                 address
                             )
                         )
+                    ),
+                    applications (
+                        submitted_data
                     )
                 `)
                 .eq("role", "tenant")
@@ -54,9 +57,22 @@ const ResidentsManagement = () => {
                 return;
             }
 
-            // Fetch payment information for each tenant
+            // Fetch payment information for each tenant and resolve phone fallback
             const tenantsWithPayments = await Promise.all(
                 (tenantData || []).map(async (tenant) => {
+                    // Fallback for phone number from application data
+                    let displayPhone = tenant.phone_number;
+                    if (!displayPhone && tenant.applications && tenant.applications.length > 0) {
+                        // Find the most recent application with a phone number
+                        for (const app of tenant.applications) {
+                            const phone = (app.submitted_data as any)?.personal?.phone;
+                            if (phone) {
+                                displayPhone = phone;
+                                break;
+                            }
+                        }
+                    }
+
                     const { data: payments } = await supabase
                         .from("payments")
                         .select("*")
@@ -70,6 +86,7 @@ const ResidentsManagement = () => {
 
                     return {
                         ...tenant,
+                        phone_number: displayPhone, // Use the resolved phone number (fallback applied)
                         latestPayment: payments?.[0] || null,
                         outstandingAmount,
                         paymentStatus: payments?.[0]?.status || "unknown"
@@ -94,7 +111,7 @@ const ResidentsManagement = () => {
                     <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter", isMobile ? "text-3xl" : "text-5xl")}>
                         Resident Directory<span className="text-primary">.</span>
                     </h2>
-                    <p className="text-stone-500 mt-2 font-medium" style={{fontSize: isMobile ? '14px' : '18px'}}>Manage your active tenant community and their accommodations.</p>
+                    <p className="text-stone-500 mt-2 font-medium" style={{ fontSize: isMobile ? '14px' : '18px' }}>Manage your active tenant community and their accommodations.</p>
                 </div>
             </div>
 
@@ -194,8 +211,8 @@ const ResidentsManagement = () => {
                                                 <div className={cn(
                                                     "rounded-lg flex items-center justify-center h-6 w-6",
                                                     tenant.paymentStatus === "success" ? "bg-emerald-100" :
-                                                    tenant.paymentStatus === "pending" ? "bg-amber-100" :
-                                                    tenant.paymentStatus === "failed" ? "bg-red-100" : "bg-stone-100"
+                                                        tenant.paymentStatus === "pending" ? "bg-amber-100" :
+                                                            tenant.paymentStatus === "failed" ? "bg-red-100" : "bg-stone-100"
                                                 )}>
                                                     {tenant.paymentStatus === "success" ? (
                                                         <CheckCircle2 className="h-3 w-3 text-emerald-600" />

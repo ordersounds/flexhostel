@@ -146,15 +146,19 @@ const ApplicationForm = () => {
 
       if (error) throw error;
 
-      // Update profile photo if uploaded
-      if (formData.personal.photoUrl) {
+      // Update profile photo and phone number if provided
+      const profileUpdates: any = {};
+      if (formData.personal.photoUrl) profileUpdates.photo_url = formData.personal.photoUrl;
+      if (formData.personal.phone) profileUpdates.phone_number = formData.personal.phone;
+
+      if (Object.keys(profileUpdates).length > 0) {
         const { error: profileError } = await supabase
           .from("profiles")
-          .update({ photo_url: formData.personal.photoUrl })
+          .update(profileUpdates)
           .eq("id", user.id);
 
         if (profileError) {
-          console.error("Failed to update profile photo:", profileError);
+          console.error("Failed to update profile:", profileError);
           // Don't throw error as application submission is more important
         }
       }
@@ -189,7 +193,7 @@ const ApplicationForm = () => {
 
           <div className="grid lg:grid-cols-12 gap-8 md:gap-12">
 
-          {/* Mobile Summary Section (Top on mobile, hidden on desktop sidebar) */}
+            {/* Mobile Summary Section (Top on mobile, hidden on desktop sidebar) */}
             <div className="lg:hidden animate-reveal-up delay-75">
               <div className="bg-white rounded-3xl p-6 border border-stone-100 shadow-sm flex items-center gap-4">
                 <div className="h-16 w-16 shrink-0 rounded-2xl overflow-hidden border border-stone-100">
@@ -476,7 +480,7 @@ const ApplicationForm = () => {
                         </div>
                       )}
 
-                        <div className="space-y-4">
+                      <div className="space-y-4">
                         <div className="space-y-2">
                           <label className="text-[10px] font-bold uppercase tracking-widest text-stone-400 ml-4">Student ID Upload</label>
                           <DocumentUpload
