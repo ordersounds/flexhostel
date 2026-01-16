@@ -213,7 +213,7 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
             <DialogTrigger asChild>
                 {trigger}
             </DialogTrigger>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-[3rem] border-stone-100 p-0 shadow-2xl">
+            <DialogContent className="w-[95vw] max-w-4xl max-h-[90vh] overflow-y-auto bg-white rounded-[2rem] sm:rounded-[3rem] border-stone-100 p-0 shadow-2xl">
                 <DialogHeader className="sr-only">
                     <DialogTitle>Tenant Details - {tenant.name}</DialogTitle>
                     <DialogDescription>
@@ -229,22 +229,22 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                         </div>
                     </div>
                 ) : tenantData ? (
-                    <div className="p-10 space-y-8">
+                    <div className="p-5 sm:p-10 space-y-6 sm:space-y-8">
                         {/* Header Section */}
-                        <div className="flex items-start gap-6">
-                            <div className="h-20 w-20 rounded-[1.5rem] bg-stone-100 overflow-hidden shadow-inner flex-shrink-0">
+                        <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+                            <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-[1.2rem] sm:rounded-[1.5rem] bg-stone-100 overflow-hidden shadow-inner flex-shrink-0 mx-auto sm:mx-0">
                                 {tenantData.photo_url ? (
                                     <img src={tenantData.photo_url} className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center font-bold text-stone-400 uppercase text-2xl">
+                                    <div className="w-full h-full flex items-center justify-center font-bold text-stone-400 uppercase text-xl sm:text-2xl">
                                         {tenantData.name.charAt(0)}
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-3 mb-2">
-                                    <h2 className="font-display font-bold text-2xl text-stone-900 tracking-tight">
+                            <div className="flex-1 min-w-0 text-center sm:text-left">
+                                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3 mb-2">
+                                    <h2 className="font-display font-bold text-xl sm:text-2xl text-stone-900 tracking-tight">
                                         {tenantData.name}
                                     </h2>
                                     <Badge className="bg-emerald-50 text-emerald-600 border-none font-bold text-xs uppercase tracking-widest px-3">
@@ -252,10 +252,10 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                     </Badge>
                                 </div>
 
-                                <div className="flex items-center gap-4 text-stone-500">
+                                <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 text-stone-500">
                                     <div className="flex items-center gap-2">
                                         <Mail className="h-4 w-4" />
-                                        <span className="text-sm font-medium">{tenantData.email}</span>
+                                        <span className="text-sm font-medium break-all">{tenantData.email}</span>
                                     </div>
                                     {tenantData.phone_number && (
                                         <div className="flex items-center gap-2">
@@ -270,7 +270,7 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                         <Separator />
 
                         {/* Room & Tenancy Information */}
-                        <div className="grid md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-4">
                                 <h3 className="font-bold text-stone-900 text-lg flex items-center gap-2">
                                     <Home className="h-5 w-5" />
@@ -384,8 +384,8 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                             {tenantData.buildingCharges && tenantData.buildingCharges.length > 0 ? (
                                 <div className="space-y-3">
                                     {tenantData.buildingCharges.map((charge: ChargePaymentStatus) => (
-                                        <div key={charge.chargeId} className="p-5 bg-stone-50 rounded-[1.5rem] border border-stone-200">
-                                            <div className="flex justify-between items-start mb-4">
+                                        <div key={charge.chargeId} className="p-4 sm:p-5 bg-stone-50 rounded-[1.2rem] sm:rounded-[1.5rem] border border-stone-200">
+                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 sm:gap-0 mb-4">
                                                 <div className="flex items-center gap-3">
                                                     <div className={cn(
                                                         "h-10 w-10 rounded-xl flex items-center justify-center shadow-sm",
@@ -417,8 +417,8 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="text-xs text-stone-400 font-bold uppercase tracking-widest mb-1">Status</p>
+                                                <div className="text-left sm:text-right">
+                                                    <p className="text-xs text-stone-400 font-bold uppercase tracking-widest mb-1 hidden sm:block">Status</p>
                                                     {charge.isUpToDate ? (
                                                         <Badge className="bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border-none">
                                                             Paid Up To Date
@@ -507,7 +507,7 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                             };
 
                                             return (
-                                                <div key={payment.id} className="flex items-center justify-between p-3 bg-stone-50 rounded-xl">
+                                                <div key={payment.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 bg-stone-50 rounded-xl">
                                                     <div className="flex items-center gap-3">
                                                         <div className={cn(
                                                             "h-8 w-8 rounded-full flex items-center justify-center",
@@ -534,7 +534,7 @@ const TenantDetailDialog = ({ tenant, trigger, onUpdate }: TenantDetailDialogPro
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    <div className="text-right">
+                                                    <div className="text-left sm:text-right">
                                                         <p className="font-semibold text-stone-900">{formatCurrency(payment.amount)}</p>
                                                         <Badge className={cn(
                                                             "text-xs",
