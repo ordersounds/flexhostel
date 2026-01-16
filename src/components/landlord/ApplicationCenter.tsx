@@ -221,8 +221,8 @@ const ApplicationCenter = () => {
                                                         </div>
 
                                                         <div className="pl-8 space-y-3">
-                                                            {app.submitted_data?.documents?.studentId && (
-                                                                <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.documents.studentId, '_blank')}>
+                                                            {app.submitted_data?.school?.studentId && (
+                                                                <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.school.studentId, '_blank')}>
                                                                     <div className="flex items-center gap-2">
                                                                         <FileText className="h-4 w-4 text-primary" />
                                                                         <div>
@@ -232,8 +232,8 @@ const ApplicationCenter = () => {
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            {app.submitted_data?.documents?.studentAffairsClearance && (
-                                                                <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.documents.studentAffairsClearance, '_blank')}>
+                                                            {app.submitted_data?.school?.studentAffairsClearance && (
+                                                                <div className="p-3 rounded-xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.school.studentAffairsClearance, '_blank')}>
                                                                     <div className="flex items-center gap-2">
                                                                         <FileText className="h-4 w-4 text-primary" />
                                                                         <div>
@@ -243,7 +243,7 @@ const ApplicationCenter = () => {
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            {!app.submitted_data?.documents?.studentId && !app.submitted_data?.documents?.studentAffairsClearance && (
+                                                            {!app.submitted_data?.school?.studentId && !app.submitted_data?.school?.studentAffairsClearance && (
                                                                 <p className="text-xs text-stone-400 italic">No documents uploaded</p>
                                                             )}
                                                         </div>
@@ -485,8 +485,8 @@ const ApplicationCenter = () => {
                                                                 </div>
 
                                                                 <div className="pl-11 space-y-4">
-                                                                    {app.submitted_data?.documents?.studentId && (
-                                                                        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.documents.studentId, '_blank')}>
+                                                                    {app.submitted_data?.school?.studentId && (
+                                                                        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.school.studentId, '_blank')}>
                                                                             <div className="flex items-center gap-3">
                                                                                 <FileText className="h-5 w-5 text-primary" />
                                                                                 <div>
@@ -496,8 +496,8 @@ const ApplicationCenter = () => {
                                                                             </div>
                                                                         </div>
                                                                     )}
-                                                                    {app.submitted_data?.documents?.studentAffairsClearance && (
-                                                                        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.documents.studentAffairsClearance, '_blank')}>
+                                                                    {app.submitted_data?.school?.studentAffairsClearance && (
+                                                                        <div className="p-4 rounded-2xl bg-stone-50 border border-stone-100 cursor-pointer hover:border-primary transition-colors" onClick={() => window.open(app.submitted_data.school.studentAffairsClearance, '_blank')}>
                                                                             <div className="flex items-center gap-3">
                                                                                 <FileText className="h-5 w-5 text-primary" />
                                                                                 <div>
@@ -507,7 +507,7 @@ const ApplicationCenter = () => {
                                                                             </div>
                                                                         </div>
                                                                     )}
-                                                                    {!app.submitted_data?.documents?.studentId && !app.submitted_data?.documents?.studentAffairsClearance && (
+                                                                    {!app.submitted_data?.school?.studentId && !app.submitted_data?.school?.studentAffairsClearance && (
                                                                         <p className="pl-11 text-sm text-stone-400 italic">No documents uploaded</p>
                                                                     )}
                                                                 </div>
