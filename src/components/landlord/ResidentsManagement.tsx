@@ -42,7 +42,7 @@ const ResidentsManagement = () => {
                             )
                         )
                     ),
-                    applications (
+                    applications!applications_user_id_fkey (
                         submitted_data
                     )
                 `)
