@@ -285,6 +285,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          read_at: string | null
           receiver_id: string | null
           sender_id: string
         }
@@ -294,6 +295,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          read_at?: string | null
           receiver_id?: string | null
           sender_id: string
         }
@@ -303,6 +305,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          read_at?: string | null
           receiver_id?: string | null
           sender_id?: string
         }
