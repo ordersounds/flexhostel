@@ -59,15 +59,15 @@ const ApplicationCenter = () => {
 
     return (
         <div className={cn("animate-reveal-up pb-20 w-full max-w-full overflow-hidden", isMobile ? "space-y-8" : "space-y-12")}>
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 w-full">
+            <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-6 w-full">
                 <div className="min-w-0 flex-1">
-                    <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter transition-all truncate", isMobile ? "text-2xl" : "text-5xl")}>
+                    <h2 className={cn("font-display font-bold text-stone-900 tracking-tighter transition-all whitespace-nowrap", isMobile ? "text-2xl" : "text-5xl")}>
                         Admissions Queue<span className="text-primary">.</span>
                     </h2>
                     <p className="text-stone-500 mt-2 font-medium opacity-80 break-words" style={{ fontSize: isMobile ? '13px' : '18px' }}>Verify credentials and curate your resident community.</p>
                 </div>
 
-                <div className="flex bg-stone-100 p-1 rounded-2xl w-full max-w-full overflow-x-auto no-scrollbar scroll-smooth shrink-0">
+                <div className="flex bg-stone-100 p-1 rounded-2xl w-full md:w-auto max-w-full overflow-x-auto no-scrollbar scroll-smooth shrink-0">
                     {["all", "pending", "approved", "rejected"].map((status) => (
                         <button
                             key={status}
