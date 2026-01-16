@@ -81,7 +81,7 @@ Deno.serve(async (req) => {
       console.log("Creating manual rent payment for application:", application_id);
 
       // Get application details
-      const { data: application } = await supabase
+      const { data: application, error: applicationError } = await supabase
         .from("applications")
         .select(`
           *,
@@ -90,6 +90,16 @@ Deno.serve(async (req) => {
         `)
         .eq("id", application_id)
         .single();
+
+      console.log("Application query result:", { application, error: applicationError });
+
+      if (applicationError) {
+        console.error("Error fetching application:", applicationError);
+        return new Response(
+          JSON.stringify({ error: "Failed to fetch application", details: applicationError.message }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
 
       if (!application) {
         return new Response(
