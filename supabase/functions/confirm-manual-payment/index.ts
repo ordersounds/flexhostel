@@ -215,6 +215,42 @@ Deno.serve(async (req) => {
           .from("profiles")
           .update(profileUpdates)
           .eq("id", application.user_id);
+
+        // Send rent payment success email
+        const { data: tenantProfile } = await supabase
+          .from("profiles")
+          .select("email, name")
+          .eq("id", application.user_id)
+          .single();
+
+        if (tenantProfile?.email) {
+          try {
+            const emailUrl = `${supabaseUrl}/functions/v1/send-email`;
+            await fetch(emailUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${supabaseServiceKey}`,
+              },
+              body: JSON.stringify({
+                type: "rent_payment_success",
+                to: tenantProfile.email,
+                data: {
+                  name: tenantProfile.name || "Resident",
+                  roomName: application.room?.room_name || "N/A",
+                  buildingName: "Flex Hostel",
+                  amount: application.room.price,
+                  startDate: startDate.toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }),
+                  endDate: endDate.toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }),
+                  reference: reference,
+                },
+              }),
+            });
+            console.log("Rent payment success email sent");
+          } catch (emailError) {
+            console.error("Failed to send rent payment email:", emailError);
+          }
+        }
       }
 
       return new Response(

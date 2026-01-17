@@ -44,6 +44,9 @@ const ApplicationCenter = () => {
     };
 
     const handleAction = async (id: string, status: "approved" | "rejected") => {
+        // Get application details before updating
+        const application = applications.find(app => app.id === id);
+        
         const { error } = await supabase
             .from("applications")
             .update({ status, approved_at: status === "approved" ? new Date().toISOString() : null })
@@ -53,6 +56,29 @@ const ApplicationCenter = () => {
             toast.error(`Decision failed for application`);
         } else {
             toast.success(`Application ${status} successfully`);
+            
+            // Send email notification
+            if (application?.applicant?.email) {
+                try {
+                    const emailType = status === "approved" ? "application_approved" : "application_rejected";
+                    await supabase.functions.invoke("send-email", {
+                        body: {
+                            type: emailType,
+                            to: application.applicant.email,
+                            data: {
+                                name: application.applicant.name || "Applicant",
+                                roomName: application.room?.room_name || "N/A",
+                                buildingName: application.room?.building?.name || "Flex Hostel",
+                                price: application.room?.price || 0,
+                            },
+                        },
+                    });
+                } catch (emailError) {
+                    console.error("Failed to send application status email:", emailError);
+                    // Don't block the action if email fails
+                }
+            }
+            
             fetchApplications();
         }
     };

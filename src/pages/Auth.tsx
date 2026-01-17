@@ -85,7 +85,7 @@ const Auth = () => {
           navigate("/dashboard");
         }
       } else {
-        const { error } = await supabase.auth.signUp({
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
@@ -102,6 +102,23 @@ const Auth = () => {
             throw new Error("This email is already registered. Please sign in instead.");
           }
           throw error;
+        }
+
+        // Send welcome email
+        try {
+          await supabase.functions.invoke("send-email", {
+            body: {
+              type: "welcome",
+              to: formData.email,
+              data: {
+                name: formData.name,
+                email: formData.email,
+              },
+            },
+          });
+        } catch (emailError) {
+          console.error("Failed to send welcome email:", emailError);
+          // Don't block signup if email fails
         }
 
         toast.success("Account created! We've sent a verification email.");

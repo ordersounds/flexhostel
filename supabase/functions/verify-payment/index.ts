@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     if (payment.payment_type === "rent" && payment.application_id) {
       const { data: application } = await supabase
         .from("applications")
-        .select("*, rooms(*)")
+        .select("*, rooms(*, building:buildings(name))")
         .eq("id", payment.application_id)
         .single();
 
@@ -170,6 +170,42 @@ Deno.serve(async (req) => {
             .eq("id", payment.user_id);
 
           console.log("Room status and user role updated");
+
+          // Get user email and send rent payment success email
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email, name")
+            .eq("id", payment.user_id)
+            .single();
+
+          if (profile?.email) {
+            try {
+              const emailUrl = `${supabaseUrl}/functions/v1/send-email`;
+              await fetch(emailUrl, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseServiceKey}`,
+                },
+                body: JSON.stringify({
+                  type: "rent_payment_success",
+                  to: profile.email,
+                  data: {
+                    name: profile.name || "Resident",
+                    roomName: application.rooms?.room_name || "N/A",
+                    buildingName: application.rooms?.building?.name || "Flex Hostel",
+                    amount: payment.amount,
+                    startDate: startDate.toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }),
+                    endDate: endDate.toLocaleDateString("en-NG", { year: "numeric", month: "long", day: "numeric" }),
+                    reference: reference,
+                  },
+                }),
+              });
+              console.log("Rent payment success email sent");
+            } catch (emailError) {
+              console.error("Failed to send rent payment email:", emailError);
+            }
+          }
         }
       }
     }
