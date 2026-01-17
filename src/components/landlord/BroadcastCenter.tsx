@@ -670,6 +670,49 @@ const BroadcastCenter = ({ isReadOnly = false, isAgent = false, announcementsOnl
 
             if (error) throw error;
 
+            // Get tenants to notify
+            let tenantsQuery = supabase
+                .from("tenancies")
+                .select(`
+                    tenant:profiles!tenancies_tenant_id_fkey (id, name, email),
+                    room:rooms (building_id)
+                `)
+                .eq("status", "active");
+
+            const { data: tenancies } = await tenantsQuery;
+
+            // Filter by building if specific building selected
+            const targetTenancies = newAnnouncement.building_id
+                ? tenancies?.filter(t => t.room?.building_id === newAnnouncement.building_id)
+                : tenancies;
+
+            // Get building name for email
+            const buildingName = newAnnouncement.building_id
+                ? buildings.find(b => b.id === newAnnouncement.building_id)?.name || null
+                : null;
+
+            // Send emails to all tenants (don't await to avoid blocking UI)
+            if (targetTenancies && targetTenancies.length > 0) {
+                const uniqueEmails = [...new Set(targetTenancies.map(t => t.tenant?.email).filter(Boolean))];
+                
+                for (const email of uniqueEmails) {
+                    const tenant = targetTenancies.find(t => t.tenant?.email === email)?.tenant;
+                    supabase.functions.invoke("send-email", {
+                        body: {
+                            type: "new_announcement",
+                            to: email,
+                            data: {
+                                name: tenant?.name || "Resident",
+                                title: newAnnouncement.title.trim(),
+                                content: newAnnouncement.content.trim(),
+                                buildingName: buildingName,
+                                createdBy: currentUser.name || "Management",
+                            },
+                        },
+                    }).catch(err => console.error("Failed to send announcement email:", err));
+                }
+            }
+
             setNewAnnouncement({ title: "", content: "", building_id: "" });
             toast.success("Announcement sent successfully");
             fetchAnnouncements();

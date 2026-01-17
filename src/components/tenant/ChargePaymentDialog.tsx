@@ -221,9 +221,29 @@ const ChargePaymentDialog = ({
             callback: (response: any) => {
                 // Finalize payment
                 finalizeSuccessfulPayment(userId, charge.id, selectedFrequency, reference)
-                    .then((finalizeResult) => {
+                    .then(async (finalizeResult) => {
                         if (finalizeResult.success) {
                             toast.success("Payment successful! Your payment plan has been locked.");
+                            
+                            // Send charge payment success email
+                            try {
+                                await supabase.functions.invoke("send-email", {
+                                    body: {
+                                        type: "charge_payment_success",
+                                        to: userEmail,
+                                        data: {
+                                            name: "Resident",
+                                            chargeName: charge.name,
+                                            amount: amount,
+                                            periodLabel: selectedPeriod?.label || "N/A",
+                                            reference: reference,
+                                        },
+                                    },
+                                });
+                            } catch (emailError) {
+                                console.error("Failed to send charge payment email:", emailError);
+                            }
+                            
                             onPaymentComplete?.();
                         } else {
                             toast.error(finalizeResult.error || "Payment completed but there was an error processing it");
